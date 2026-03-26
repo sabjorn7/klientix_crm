@@ -1,0 +1,3085 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Клиентикс — Журнал</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2130;--border:#21262d;
+  --text:#e6edf3;--text2:#8b949e;--muted:#484f58;
+  --accent:#4f8ef7;--success:#34c77b;--danger:#f05c5c;--warn:#f5a623;
+}
+body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.light{
+  --bg:#f5f7fa;--surface:#ffffff;--surface2:#f0f2f5;--border:#e1e4e8;
+  --text:#1a1f2e;--text2:#586069;--muted:#959da5;
+  --accent:#0969da;--success:#1a7f37;--danger:#cf222e;--warn:#9a6700;
+}
+.theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text2);font-size:16px;cursor:pointer;line-height:1}
+.pulse-period-btn{background:none;border:1px solid var(--border);border-radius:20px;padding:5px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer;transition:all .15s}
+.pulse-period-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pulse-period-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.theme-toggle:hover{border-color:var(--accent)}
+
+/* SETUP */
+#setup-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:380px}
+.setup-card .logo{font-size:32px;margin-bottom:12px}
+.setup-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.setup-card p{color:var(--text2);font-size:13px;margin-bottom:24px;line-height:1.5}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
+.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:14px}
+.field input:focus{outline:none;border-color:var(--accent)}
+.btn-primary{width:100%;background:var(--accent);border:none;border-radius:8px;padding:12px;color:#fff;font-family:'Onest',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-primary:hover{opacity:.9}
+
+/* APP */
+#main-app{display:none}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-logo{font-size:20px}
+.header-title{font-size:16px;font-weight:700}
+.header-sub{font-size:12px;color:var(--muted)}
+.btn-logout{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:12px;cursor:pointer}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab-btn{background:none;border:none;padding:12px 16px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* FILTERS */
+.filters{display:flex;align-items:center;gap:10px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.fi{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px}
+.fi:focus{outline:none;border-color:var(--accent)}
+.btn-search{background:var(--accent);border:none;border-radius:7px;padding:8px 18px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end}
+#error-msg{display:none;background:#f05c5c22;border:1px solid #f05c5c55;border-radius:8px;padding:8px 12px;color:var(--danger);font-size:12px;margin:0 24px 12px}
+
+/* STATS */
+.stats-row{display:none;gap:12px;padding:14px 24px;flex-wrap:wrap}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;display:flex;flex-direction:column;gap:3px;min-width:120px}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;padding:0 24px 24px}
+.main-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+.main-table th{padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);white-space:nowrap}
+.main-table td{padding:10px 12px;border-bottom:1px solid #1a1f2e;vertical-align:top}
+.main-table tr:hover td{background:var(--surface)}
+.client-name{font-weight:600}
+.status-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.s-scheduled{background:#f5a62322;color:#f5a623}
+.s-confirmed{background:#4f8ef722;color:#4f8ef7}
+.s-in_progress{background:#7c6af522;color:#7c6af5}
+.s-arrived{background:#45d4fa22;color:#45d4fa}
+.s-finished{background:#34c77b22;color:#34c77b}
+.s-missed{background:#f05c5c22;color:#f05c5c}
+.s-cancelled{background:#48505a22;color:#8b949e}
+.s-other{background:#48505a22;color:#8b949e}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.svc-list{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* STATE BOX */
+.state-wrap{display:none;align-items:center;justify-content:center;padding:60px 24px}
+.state-box{text-align:center}
+.state-icon{font-size:40px;margin-bottom:12px}
+.state-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.state-desc{font-size:13px;color:var(--text2)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PAGINATION */
+.pag{display:none;align-items:center;justify-content:center;gap:8px;padding:16px}
+.pag-btn{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer}
+.pag-btn:hover{color:var(--text);border-color:var(--accent)}
+.pag-btn:disabled{opacity:.35;cursor:default}
+.pag-info{font-size:13px;color:var(--text2)}
+
+/* REPORT */
+#report-section{padding:20px 24px}
+.report-totals{display:none;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.rt-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;min-width:130px}
+.rt-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.rt-value{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.report-empty{color:var(--text2);padding:40px;text-align:center}
+.report-employee{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.report-emp-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none}
+.report-emp-header:hover{background:var(--surface2)}
+.report-emp-left{display:flex;align-items:center;gap:12px}
+.report-emp-name{font-weight:600;font-size:14px}
+.report-emp-total{font-size:12px;color:var(--text2);margin-top:2px}
+.report-emp-sum{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--success)}
+.report-emp-body{display:none;border-top:1px solid var(--border)}
+.report-emp-body.open{display:block}
+.report-svc-table{width:100%;border-collapse:collapse;font-size:13px}
+.report-svc-table th{padding:8px 14px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.report-svc-table td{padding:8px 14px;border-bottom:1px solid #1a1f2e}
+.report-svc-table tr:last-child td{border-bottom:none}
+.svc-qty{background:var(--surface2);border-radius:4px;padding:1px 7px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.chevron{font-size:10px;color:var(--muted);transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+.avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+
+/* SCHEDULE */
+#schedule-section{display:none}
+.sch-layout{display:flex;height:calc(100vh - 120px)}
+.sch-sidebar{width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 0}
+.sch-sidebar-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:0 12px 8px}
+.sch-sidebar-actions{display:flex;gap:6px;padding:0 10px 10px}
+.sch-sidebar-actions button{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px;color:var(--text2);font-size:11px;cursor:pointer}
+#sch-emp-selector{padding:0 4px}
+.sch-main{flex:1;overflow:auto;padding:0}
+.sch-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+.btn-sch-nav{background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text2)}
+#sch-date-label{font-weight:600;font-size:14px;min-width:140px;text-align:center}
+.btn-sch-load{background:var(--accent);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.btn-sch-load:disabled{opacity:.5;cursor:default}
+#sch-status{font-size:12px;color:var(--text2);margin-left:auto}
+#schedule-body{padding:0}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="logo">📋</div>
+    <h1>Журнал записей</h1>
+    <p>Введите данные из раздела <strong>Настройки → Интеграции → API</strong></p>
+    <div class="field">
+      <label>API ID аккаунта</label>
+      <input type="text" id="inp-account" placeholder="Например: abd9e828f349" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>API ID пользователя</label>
+      <input type="text" id="inp-user" placeholder="Например: 1fd6a96a61d6" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>API Токен</label>
+      <input type="password" id="inp-token" placeholder="Токен авторизации" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="connect()">Войти →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="main-app">
+  <header>
+    <div class="header-left">
+      <div class="header-logo">📋</div>
+      <div>
+        <div class="header-title">Клиентикс</div>
+        <div class="header-sub" id="header-sub"></div>
+      </div>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Сменить тему">🌙</button>
+    <button class="btn-logout" onclick="logout()">Выйти</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn" id="tab-today" onclick="switchTab('today')">💓 Пульс</button>
+    <button class="tab-btn active" id="tab-journal" onclick="switchTab('journal')">📋 Журнал записей</button>
+    <button class="tab-btn" id="tab-report" onclick="switchTab('report')">📊 Отчёт по сотрудникам</button>
+    <button class="tab-btn" id="tab-schedule" onclick="switchTab('schedule')">📅 Расписание</button>
+    <button class="tab-btn" id="tab-clients" onclick="switchTab('clients')">👤 Клиенты</button>
+    <button class="tab-btn" id="tab-calls" onclick="switchTab('calls')">📞 Обзвон</button>
+    <button class="tab-btn" id="tab-forecast" onclick="switchTab('forecast')">🔮 Прогноз</button>
+    <button class="tab-btn" id="tab-dashboard" onclick="switchTab('dashboard')">📈 Дашборд</button>
+  </div>
+
+  <!-- JOURNAL TAB -->
+  <div id="journal-section">
+    <div class="filters">
+      <div class="fg"><label>Дата с</label><input type="date" id="f-from" class="fi"></div>
+      <div class="fg"><label>Дата по</label><input type="date" id="f-to" class="fi"></div>
+      <div class="fg"><label>Сотрудник</label>
+        <select id="f-emp" class="fi" style="min-width:180px" onchange="applyFilters()">
+          <option value="">Все сотрудники</option>
+        </select>
+      </div>
+      <div class="fg"><label>Статус</label>
+        <select id="f-status" class="fi" onchange="applyFilters()">
+          <option value="">Все статусы</option>
+          <option value="scheduled">Запланирован</option>
+          <option value="confirmed">Подтверждён</option>
+          <option value="in_progress">В процессе</option>
+          <option value="finished">Завершён</option>
+          <option value="cancelled">Отменён</option>
+          <option value="cancelled_rescheduled">Отменён и перезаписан</option>
+          <option value="cancelled_not_rescheduled">Отменён и не перезаписан</option>
+          <option value="finished_not_rescheduled">Принят и не записан</option>
+        </select>
+      </div>
+      <div class="fg"><label>Поиск</label><input type="text" id="f-search" class="fi" placeholder="Клиент, услуга..." style="min-width:160px" oninput="applyFilters()"></div>
+      <button class="btn-search" onclick="loadData()">Найти</button>
+    </div>
+    <div id="error-msg"></div>
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card"><div class="stat-label">Всего</div><div class="stat-value" id="st-total">0</div></div>
+      <div class="stat-card"><div class="stat-label">Завершено</div><div class="stat-value" id="st-finished" style="color:var(--success)">0</div></div>
+      <div class="stat-card"><div class="stat-label">Отменено</div><div class="stat-value" id="st-cancelled" style="color:var(--danger)">0</div></div>
+      <div class="stat-card"><div class="stat-label">Пропущено</div><div class="stat-value" id="st-missed" style="color:var(--warn)">0</div></div>
+      <div class="stat-card"><div class="stat-label">Выручка</div><div class="stat-value" id="st-revenue" style="color:var(--success)">0 ₽</div></div>
+    </div>
+    <div class="state-wrap" id="state-box" style="display:flex">
+      <div class="state-box">
+        <div class="state-icon">📋</div>
+        <div class="state-title">Журнал записей</div>
+        <div class="state-desc">Выберите период и нажмите «Найти»</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="main-table" id="main-table" style="display:none">
+        <thead>
+          <tr>
+            <th>Дата / время</th>
+            <th>Клиент</th>
+            <th>Сотрудник</th>
+            <th>Услуга</th>
+            <th>Телефон</th>
+            <th>Статус</th>
+            <th>Сумма</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="pag" id="pag">
+      <button class="pag-btn" id="pag-prev" onclick="changePage(-1)">← Назад</button>
+      <span class="pag-info" id="pag-info"></span>
+      <button class="pag-btn" id="pag-next" onclick="changePage(1)">Вперёд →</button>
+    </div>
+  </div>
+
+  <!-- TODAY TAB -->
+  <div id="today-section" style="display:none">
+    <div style="padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap">
+      <button class="pulse-period-btn active" onclick="setPulsePeriod('today')">Сегодня</button>
+      <button class="pulse-period-btn" onclick="setPulsePeriod('yesterday')">Вчера</button>
+      <button class="pulse-period-btn" onclick="setPulsePeriod('tomorrow')">Завтра</button>
+      <button class="pulse-period-btn" onclick="setPulsePeriod('week')">Текущая неделя</button>
+    </div>
+    <div style="padding:20px 24px" id="today-body">
+      <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+
+  <!-- REPORT TAB -->
+  <div id="report-section" style="display:none">
+    <div class="report-totals" id="report-totals">
+      <div class="rt-card"><div class="rt-label">Выручка</div><div class="rt-value" id="rt-revenue">—</div></div>
+      <div class="rt-card"><div class="rt-label">Визитов</div><div class="rt-value" id="rt-visits">—</div></div>
+      <div class="rt-card"><div class="rt-label">Сотрудников</div><div class="rt-value" id="rt-employees">—</div></div>
+      <div class="rt-card"><div class="rt-label">Услуг</div><div class="rt-value" id="rt-services">—</div></div>
+    </div>
+    <div id="report-body"></div>
+  </div>
+
+  <!-- SCHEDULE TAB -->
+  <div id="schedule-section" style="display:none">
+    <div class="sch-layout">
+      <div class="sch-sidebar">
+        <div class="sch-sidebar-title">Сотрудники</div>
+        <div class="sch-sidebar-actions">
+          <button onclick="selectAllEmps()">Все</button>
+          <button onclick="clearEmpSel()">Сброс</button>
+        </div>
+        <div id="sch-emp-selector"></div>
+      </div>
+      <div class="sch-main">
+        <div class="sch-toolbar">
+          <button class="btn-sch-nav" onclick="schChangeMonth(-1)">◀</button>
+          <div id="sch-date-label">—</div>
+          <button class="btn-sch-nav" onclick="schChangeMonth(1)">▶</button>
+          <button class="btn-sch-load" onclick="loadSchedule()">Показать</button>
+          <button class="btn-sch-load" id="btn-load-graph" onclick="loadRealSchedule()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2)">📅 Загрузить свободные окна</button>
+          <div id="sch-status"></div>
+        </div>
+        <div id="schedule-body">
+          <div style="padding:40px;text-align:center;color:var(--text2)">Выберите сотрудников и нажмите «Показать»</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <!-- DASHBOARD TAB -->
+  <div id="dashboard-section" style="display:none;padding:20px 24px">
+    <div id="dashboard-body">
+      <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+  <!-- FORECAST TAB -->
+  <div id="forecast-section" style="display:none;padding:20px 24px">
+    <div id="forecast-body">
+      <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+
+  <!-- CALLS TAB -->
+  <div id="calls-section" style="display:none">
+    <div style="padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button onclick="setCallFilter('')" id="cf-all" class="pulse-period-btn active">Все</button>
+      <button onclick="setCallFilter('pending')" id="cf-pending" class="pulse-period-btn">📞 Не звонили</button>
+      <button onclick="setCallFilter('no_answer')" id="cf-no_answer" class="pulse-period-btn">📵 Не дозвон.</button>
+      <button onclick="setCallFilter('callback')" id="cf-callback" class="pulse-period-btn">🔁 Перезвонит</button>
+      <button onclick="setCallFilter('booked')" id="cf-booked" class="pulse-period-btn">✅ Записан</button>
+      <button onclick="setCallFilter('refused')" id="cf-refused" class="pulse-period-btn">❌ Отказался</button>
+      <button onclick="loadCallsTab()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+    </div>
+    <div id="calls-stats" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border)"></div>
+    <div id="calls-body" style="padding:0 24px 24px"></div>
+  </div>
+  <!-- CLIENTS TAB -->
+  <div id="clients-section" style="display:none">
+    <div style="padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div class="fg"><label>Поиск</label><input type="text" id="cl-search" class="fi" placeholder="Имя или телефон..." style="min-width:200px" oninput="filterClients()"></div>
+      <div class="fg"><label>Врач</label>
+        <select id="cl-emp" class="fi" style="min-width:170px" onchange="filterClients()">
+          <option value="">Все врачи</option>
+        </select>
+      </div>
+      <div class="fg"><label>Визитов от</label><input type="number" id="cl-min-visits" class="fi" min="0" style="width:80px" placeholder="0" oninput="filterClients()"></div>
+      <div class="fg"><label>Визитов до</label><input type="number" id="cl-max-visits" class="fi" min="0" style="width:80px" placeholder="∞" oninput="filterClients()"></div>
+      <div class="fg"><label>Последний визит с</label><input type="date" id="cl-from" class="fi" onchange="filterClients()"></div>
+      <div class="fg"><label>Последний визит по</label><input type="date" id="cl-to" class="fi" onchange="filterClients()"></div>
+      <div style="display:flex;gap:8px;align-self:flex-end">
+        <button onclick="filterClients()" class="btn-search">Найти</button>
+        <button onclick="resetClientFilters()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">Сброс</button>
+        <button onclick="loadAllClients()" id="btn-load-clients" style="background:var(--accent);border:none;border-radius:7px;padding:8px 14px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">⬇ Загрузить всех клиентов</button>
+      </div>
+    </div>
+    <div style="padding:10px 24px 4px;display:flex;align-items:center;justify-content:space-between">
+      <div id="cl-stats" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div id="cl-progress" style="display:none;padding:0 24px 12px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px" id="cl-progress-label">Загрузка...</div>
+      <div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden">
+        <div id="cl-progress-bar" style="height:100%;background:var(--accent);border-radius:4px;transition:width .3s;width:0%"></div>
+      </div>
+    </div>
+    <div id="clients-body" style="padding:0 24px 24px">
+      <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+
+  <!-- CLIENT HISTORY MODAL -->
+  <div id="client-history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeClientHistory()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2">
+        <div>
+          <div style="font-size:16px;font-weight:700" id="chm-name">—</div>
+          <div style="font-size:12px;color:var(--muted)" id="chm-sub">—</div>
+        </div>
+        <button onclick="closeClientHistory()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div id="chm-body" style="padding:20px"></div>
+    </div>
+  </div>
+  <!-- BOOKING MODAL -->
+  <div id="booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeBooking()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:16px;font-weight:700">Новая запись</div>
+        <button onclick="closeBooking()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div style="padding:20px">
+        <div id="bm-info" style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--text2)"></div>
+
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Поиск клиента</label>
+            <button onclick="toggleNewClient()" id="btn-new-client" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--accent);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">+ Новый клиент</button>
+          </div>
+          <input id="bm-search" type="text" placeholder="Имя или телефон..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" oninput="searchClients()">
+          <div id="bm-search-results" style="margin-top:6px"></div>
+        </div>
+
+        <!-- NEW CLIENT FORM -->
+        <div id="new-client-form" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text2)">Новый клиент</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px">Имя *</label>
+              <input id="nc-first" type="text" placeholder="Иван" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+            </div>
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px">Фамилия</label>
+              <input id="nc-last" type="text" placeholder="Иванов" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px">Отчество</label>
+              <input id="nc-patron" type="text" placeholder="Иванович" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+            </div>
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px">Телефон *</label>
+              <input id="nc-phone" type="text" placeholder="79001234567" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px">Источник</label>
+              <input id="nc-source" type="text" placeholder="Откуда узнал о клинике" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+            </div>
+          <button onclick="createNewClient()" style="width:100%;background:var(--surface);border:1px solid var(--accent);border-radius:7px;padding:8px;color:var(--accent);font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Создать клиента</button>
+        </div>
+
+        <div id="bm-selected-client" style="display:none;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600" id="bm-client-name-display">—</div>
+              <div style="font-size:11px;color:var(--text2)" id="bm-client-phone-display">—</div>
+            </div>
+            <button onclick="clearSelectedClient()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">×</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Время начала</label>
+            <select id="bm-start-time" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px"></select>
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Время окончания</label>
+            <select id="bm-end-time" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px"></select>
+          </div>
+        </div>
+
+        <div id="bm-error" style="display:none;background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--danger)"></div>
+        <div id="bm-success" style="display:none;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--success)"></div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="closeBooking()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">Отмена</button>
+          <button onclick="submitBooking()" id="bm-submit" style="flex:2;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Записать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- TODAY CANCELLATIONS MODAL -->
+  <div id="today-cancel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2">
+        <div style="font-size:16px;font-weight:700">Отменили сегодня</div>
+        <button onclick="document.getElementById('today-cancel-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div id="today-cancel-body" style="padding:20px"></div>
+    </div>
+  </div>
+  <!-- CALL LOG MODAL -->
+  <div id="call-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeCallLog()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:440px;max-width:95vw">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:16px;font-weight:700" id="cl-title">Обзвон</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cl-subtitle"></div>
+        </div>
+        <button onclick="closeCallLog()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div style="padding:20px">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Статус обзвона</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="cl-status-btns"></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Комментарий</div>
+          <textarea id="cl-comment" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;resize:none;box-sizing:border-box" placeholder="Что сказал пациент..."></textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Администратор</div>
+          <input id="cl-admin" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Ваше имя">
+        </div>
+        <div id="cl-prev" style="display:none;background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="closeCallLog()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">Отмена</button>
+          <button onclick="saveCallLog()" id="cl-save-btn" style="flex:2;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT CARD MODAL -->
+  <div id="client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeClientCard()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:16px;font-weight:700" id="cm-name">—</div>
+        <button onclick="closeClientCard()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div id="cm-body" style="padding:20px"></div>
+      <div style="border-top:1px solid var(--border);padding:16px 20px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px">📝 Заметки</div>
+        <div id="cm-notes" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input id="cm-note-author" type="text" placeholder="Ваше имя" style="width:120px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+          <input id="cm-note-text" type="text" placeholder="Добавить заметку..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px" onkeydown="if(event.key==='Enter')addClientNote()">
+          <button onclick="addClientNote()" style="background:var(--accent);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Если открыто через сервер — используем прокси, иначе напрямую
+const CF_PROXY = 'https://misty-flower-3136.sazhin53.workers.dev';
+const BASE = location.protocol === 'file:'
+  ? 'https://klientiks.ru/clientix/Restapi'
+  : CF_PROXY + '/api';
+const AVATAR_COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa','#f06292','#ff8a65','#a3d977','#e879f9'];
+const PAGE_SIZE = 30;
+const EXCLUDED_EMPLOYEES = ['Василянский Андрей Валентинович','Марушевская Милена Вардгесовна','Сергеева Наталья Анатольевна','Сажин Арсений Владимирович','Тен Нина Олеговна','Тен Наталья Викторовна','Меликян Полина Вардгесовна','Булатникова Екатерина Валерьевна','Кизесов Александр Викторович','Ветошкина Юлия Сергеевна','Ткаченко Серафима Витальевна','Дементьева Ольга Георгиевна','Беляева Александра Антоновна','Алиева Зульфия Октамовна','Варламов Геннадий Владимирович','Ершов Анатолий Владимирович','Видеман Кристина Александровна','Атаманов Сергей Игоревич','Варданян Вазген Рафаэлович','Богданова Юлия Андреевна','Администратор','Администратор (старший)','Агафонова Александра Константиновна','Баранова Елена Николаевна','Бондаренко Игорь Николаевич','Аюпова Дарья Дмитриевна','Богатырева Светлана Максимовна','Гажеева Светлана Михайловна','Кажарова Заира Рустамовна','Мусаева Айдана Абдугапаровна'];
+
+let ACC = '', USR = '', TOKEN = '';
+let clientsWithNotes = new Set();
+let callLogMap = {}; // visit_id -> call log entry // client_ids у которых есть заметки
+
+async function loadNotesIndex() {
+  try {
+    const data = await sbGet('client_notes', 'select=client_id');
+    clientsWithNotes = new Set(data.map(n => n.client_id));
+  } catch(e) { console.log('Notes index error:', e.message); }
+}
+
+function notesBadge(clientId) {
+  return clientsWithNotes.has(clientId)
+    ? '<span title="Есть заметки" style="display:inline-block;background:var(--accent);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;margin-left:5px;flex-shrink:0">📝</span>'
+    : '';
+}
+
+const SB_URL = 'https://febqgxqfnnwtvmpmyxfw.supabase.co';
+const SB_KEY = 'sb_publishable_Qr9G2kpFo-zm8uFvv4z34w_mWYKuhsS';
+
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function sbInsert(table, data) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function sbDelete(table, id) {
+  await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+  });
+}
+
+// ── REALTIME ──
+let supabaseClient = null;
+
+function initRealtime() {
+  try {
+    supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    supabaseClient.channel('call_log_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_log' }, payload => {
+        const row = payload.new || payload.old;
+        if (!row) return;
+        if (payload.eventType === 'DELETE') {
+          delete callLogMap[row.visit_id];
+        } else {
+          callLogMap[row.visit_id] = row;
+        }
+        // Update allCallEntries too
+        const idx = allCallEntries.findIndex(e => e.visit_id === row.visit_id);
+        if (idx >= 0) {
+          allCallEntries[idx] = { ...allCallEntries[idx], ...row };
+        }
+        // Refresh current view
+        const activeTab = document.querySelector('.tab-btn.active')?.id?.replace('tab-','');
+        if (activeTab === 'journal') renderTable();
+        if (activeTab === 'calls') renderCallsTable();
+      })
+      .subscribe(status => {
+        console.log('Realtime:', status);
+      });
+  } catch(e) {
+    console.log('Realtime init error:', e.message);
+  }
+}
+let all = [], filtered = [], page = 1;
+let employeeMap = {};
+let schMonth = new Date(); schMonth.setDate(1);
+let selectedEmpIds = new Set();
+let scheduleCache = {};
+let scheduleLoaded = false;
+
+window.onload = () => {
+  const today = new Date();
+  const from = new Date(today.getFullYear(), today.getMonth(), 1);
+  const to = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+  document.getElementById('f-from').value = fmt(from);
+  document.getElementById('f-to').value = fmt(to);
+  const s = localStorage.getItem('kl_creds');
+  if (s) { try { const c = JSON.parse(s); ACC = c.a; USR = c.u; TOKEN = c.t || ''; showApp(); } catch(e) {} }
+};
+
+function fmt(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+
+function connect() {
+  ACC = document.getElementById('inp-account').value.trim();
+  USR = document.getElementById('inp-user').value.trim();
+  TOKEN = document.getElementById('inp-token').value.trim();
+  if (!ACC || !USR || !TOKEN) { alert('Заполните все три поля'); return; }
+  localStorage.setItem('kl_creds', JSON.stringify({ a: ACC, u: USR, t: TOKEN }));
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('header-sub').textContent = `Аккаунт #${ACC}`;
+  applyTheme();
+  loadNotesIndex();
+  loadCallLog();
+  initRealtime();
+  loadEmployees().then(() => loadData());
+}
+
+function logout() { localStorage.removeItem('kl_creds'); location.reload(); }
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('klientiks_theme', isLight ? 'light' : 'dark');
+}
+
+function applyTheme() {
+  const saved = localStorage.getItem('klientiks_theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+function switchTab(tab) {
+  ['today','journal','report','schedule','clients','calls','forecast','dashboard'].forEach(t => {
+    document.getElementById(t+'-section').style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'report') renderReport();
+  if (tab === 'schedule') initSchedule();
+  if (tab === 'today') renderToday();
+  if (tab === 'clients') initClientsTab();
+  if (tab === 'calls') loadCallsTab();
+  if (tab === 'forecast') renderForecast();
+  if (tab === 'dashboard') renderDashboard();
+}
+
+async function apiGet(path, retries = 8) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(BASE + path, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (res.status === 429) {
+      const wait = Math.min(2000 * (attempt + 1), 15000);
+      console.log(`429 Rate limit, waiting ${wait}ms... (attempt ${attempt+1})`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+  throw new Error('Rate limit exceeded after retries');
+}
+
+// ── EMPLOYEES ──
+async function loadEmployees() {
+  try {
+    const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Users/`);
+    const users = Array.isArray(data) ? data : (data.items || data.users || []);
+    const sel = document.getElementById('f-emp');
+    users.forEach(e => {
+      const name = [e.last_name, e.first_name, e.middle_name].filter(Boolean).join(' ') || e.name || String(e.id);
+      if (EXCLUDED_EMPLOYEES.includes(name.trim())) return;
+      employeeMap[String(e.id)] = name;
+      const opt = document.createElement('option');
+      opt.value = e.id; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.warn('loadEmployees:', e); }
+}
+
+// ── JOURNAL ──
+async function loadData() {
+  const from = document.getElementById('f-from').value;
+  const to = document.getElementById('f-to').value;
+  const emp = document.getElementById('f-emp').value;
+  const stat = document.getElementById('f-status').value;
+  if (!from || !to) { showErr('Укажите период'); return; }
+  hideErr(); showLoading(); all = []; page = 1;
+
+  const allStatuses = 'scheduled,confirmed,arrived,in_progress,finished,cancelled,missed';
+  const statusParam = stat ? `&status=${stat}` : `&status=${allStatuses}`;
+  const empParam = emp ? `&executor_id=${emp}` : '';
+  const tsFrom = Math.floor(new Date(from + 'T00:00:00').getTime() / 1000);
+  const tsTo = Math.floor(new Date(to + 'T23:59:59').getTime() / 1000);
+
+  try {
+    // Разбиваем период на месячные чанки чтобы обойти лимит API
+    const chunks = [];
+    let cur = new Date(from + 'T00:00:00');
+    const end = new Date(to + 'T23:59:59');
+    while (cur <= end) {
+      const chunkStart = new Date(cur);
+      const chunkEnd = new Date(cur);
+      chunkEnd.setMonth(chunkEnd.getMonth() + 1);
+      chunkEnd.setDate(0); // последний день месяца
+      chunkEnd.setHours(23,59,59);
+      if (chunkEnd > end) chunkEnd.setTime(end.getTime());
+      chunks.push({ from: chunkStart, to: chunkEnd });
+      cur.setMonth(cur.getMonth() + 1);
+      cur.setDate(1);
+    }
+
+    const seen = new Set();
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const ch = chunks[ci];
+      const cFrom = Math.floor(ch.from.getTime() / 1000);
+      const cTo = Math.floor(ch.to.getTime() / 1000);
+      const monthLabel = ch.from.toLocaleDateString('ru', {month:'long', year:'numeric'});
+      let offset = 0;
+      while (true) {
+        const url = `/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${cFrom}&date_till=${cTo}&filter=start_datetime&limit=100${statusParam}${empParam}&offset=${offset}`;
+        const data = await apiGet(url);
+        const items = Array.isArray(data) ? data : (data.orders || data.items || []);
+        if (!items.length) break;
+        items.forEach(a => {
+          if (seen.has(a.id)) return;
+          seen.add(a.id);
+          let svcs = [];
+          try { svcs = typeof a.appointed_services === 'string' ? JSON.parse(a.appointed_services) : (a.appointed_services || []); } catch(e) {}
+          const svcNames = svcs.filter(s => s.name && s.name !== '—').map(s => s.name);
+          all.push({
+            ...a,
+            _empName: employeeMap[String(a.executor_id)] || a.executor_name || a.executor || String(a.executor_id || '—'),
+            _svcNames: svcNames
+          });
+        });
+        document.getElementById('state-box').innerHTML = `<div class="state-box"><div class="spinner"></div><div class="state-title">Загрузка...</div><div class="state-desc" style="font-family:'JetBrains Mono',monospace;font-size:13px;margin-top:8px">${monthLabel}<br>Загружено: <strong>${all.length.toLocaleString('ru')}</strong> записей</div></div>`;
+        offset += 100;
+        if (items.length < 100) break;
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+    filtered = [...all];
+    applyFilters();
+    updateStats();
+  } catch(e) { showErr('Ошибка загрузки: ' + e.message); showEmpty(); }
+}
+
+function applyFilters() {
+  const search = document.getElementById('f-search').value.toLowerCase();
+  const empVal = document.getElementById('f-emp').value;
+  const statVal = document.getElementById('f-status').value;
+
+  filtered = all.filter(a => {
+    if (search) {
+      const client = (a.client_name || '').toLowerCase();
+      const svcs = (a._svcNames || []).join(' ').toLowerCase();
+      const empName = (a._empName || '').toLowerCase();
+      if (!client.includes(search) && !svcs.includes(search) && !empName.includes(search)) return false;
+    }
+    if (empVal && String(a.executor_id || '') !== empVal) return false;
+    if (statVal) {
+      if (statVal === 'cancelled_rescheduled') {
+        const isCancelled = a.status === 'cancelled' || a.status === 'cancelled_by_sms';
+        if (!isCancelled) return false;
+        const hasRescheduled = a.client_id && all.some(x =>
+          x.client_id === a.client_id && x.id !== a.id &&
+          (x.status === 'scheduled' || x.status === 'confirmed') &&
+          (x.start_datetime||'') > (a.start_datetime||'')
+        );
+        if (!hasRescheduled) return false;
+      } else if (statVal === 'cancelled_not_rescheduled') {
+        const isCancelled = a.status === 'cancelled' || a.status === 'cancelled_by_sms';
+        if (!isCancelled) return false;
+        const hasRescheduled = a.client_id && all.some(x =>
+          x.client_id === a.client_id && x.id !== a.id &&
+          (x.status === 'scheduled' || x.status === 'confirmed') &&
+          (x.start_datetime||'') > (a.start_datetime||'')
+        );
+        if (hasRescheduled) return false;
+      } else if (statVal === 'finished_not_rescheduled') {
+        if (a.status !== 'finished') return false;
+        const hasNext = a.client_id && all.some(x =>
+          x.client_id === a.client_id && x.id !== a.id &&
+          (x.status === 'scheduled' || x.status === 'confirmed') &&
+          (x.start_datetime||'') > (a.start_datetime||'')
+        );
+        if (hasNext) return false;
+      } else {
+        if (a.status !== statVal) return false;
+      }
+    }
+    return true;
+  });
+  page = 1;
+  renderTable();
+}
+
+function updateStats() {
+  const finished = all.filter(a => a.status === 'finished');
+  const revenue = finished.reduce((s, a) => s + parseFloat(a.price || 0), 0);
+  document.getElementById('st-total').textContent = all.length.toLocaleString('ru');
+  document.getElementById('st-finished').textContent = finished.length.toLocaleString('ru');
+  document.getElementById('st-cancelled').textContent = all.filter(a => a.status === 'cancelled').length.toLocaleString('ru');
+  document.getElementById('st-missed').textContent = all.filter(a => a.status === 'missed').length.toLocaleString('ru');
+  document.getElementById('st-revenue').textContent = revenue.toLocaleString('ru') + ' ₽';
+  document.getElementById('stats-row').style.display = 'flex';
+}
+
+function renderTable() {
+  const start = (page - 1) * PAGE_SIZE;
+  const rows = filtered.slice(start, start + PAGE_SIZE);
+  if (!rows.length) { showEmpty(); return; }
+
+  const STATUS_MAP = {
+    scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',
+    in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',
+    cancelled:'Отменён',cancelled_by_sms:'Отменён по SMS',sms_confirmation_sent:'Ожидает подтв.'
+  };
+  const STATUS_CLS = {
+    scheduled:'s-scheduled',confirmed:'s-confirmed',arrived:'s-arrived',
+    in_progress:'s-in_progress',finished:'s-finished',missed:'s-missed',
+    cancelled:'s-cancelled',cancelled_by_sms:'s-cancelled',sms_confirmation_sent:'s-scheduled'
+  };
+
+  document.getElementById('table-body').innerHTML = rows.map(a => {
+    const dt = (a.start_datetime || '').replace('T', ' ');
+    const date = dt.slice(0, 10).split('-').reverse().join('.');
+    const time = dt.slice(11, 16);
+    const status = a.status || '';
+    const price = parseFloat(a.price || 0);
+    const svcs = (a._svcNames || []).slice(0, 3).join(', ');
+    const aIdx = all.indexOf(a);
+    const isCancNotResch = (status === 'cancelled' || status === 'cancelled_by_sms') && !all.some(x =>
+      x.client_id === a.client_id && x.id !== a.id &&
+      (x.status === 'scheduled' || x.status === 'confirmed') &&
+      (x.start_datetime||'') > (a.start_datetime||'')
+    );
+    const cl = callLogMap[a.id];
+    const CALL_LABELS = {pending:'📞 Не звонили',no_answer:'📵 Не дозвон.',callback:'🔁 Перезвонит',booked:'✅ Записан',refused:'❌ Отказался'};
+    const CALL_COLORS = {pending:'var(--muted)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)'};
+    const callBadge = cl ? `<span style="font-size:10px;color:${CALL_COLORS[cl.status]||'var(--muted)'};margin-left:6px;cursor:pointer" onclick="event.stopPropagation();openCallLog(${aIdx})">${CALL_LABELS[cl.status]||cl.status}</span>` : '';
+    const callBtn = isCancNotResch && !cl ? `<button onclick="event.stopPropagation();openCallLog(${aIdx})" style="font-size:10px;background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.4);border-radius:4px;padding:1px 6px;color:var(--warn);cursor:pointer;margin-left:6px">📞</button>` : '';
+    return `<tr style="cursor:pointer" onclick="showClientCard(${aIdx})">
+      <td><div class="mono">${date}</div><div class="mono" style="color:var(--text2)">${time}</div></td>
+      <td><div class="client-name" style="color:var(--accent);display:flex;align-items:center;flex-wrap:wrap;gap:2px">${esc(a.client_name || '—')}${notesBadge(a.client_id)}${callBadge}${callBtn}</div></td>
+      <td style="color:var(--text2);font-size:12px">${esc(a._empName || '—')}</td>
+      <td><div class="svc-list">${esc(svcs || '—')}</div></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${a.client_phone ? esc(a.client_phone) : '—'}</td>
+      <td><span class="status-badge ${STATUS_CLS[status]||'s-other'}">${STATUS_MAP[status]||status||'—'}</span></td>
+      <td class="mono" style="color:var(--success)">${price > 0 ? price.toLocaleString('ru') + ' ₽' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main-table').style.display = 'table';
+  document.getElementById('state-box').style.display = 'none';
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  document.getElementById('pag').style.display = totalPages > 1 ? 'flex' : 'none';
+  document.getElementById('pag-info').textContent = `Стр. ${page} из ${totalPages} · ${total.toLocaleString('ru')} записей`;
+  document.getElementById('pag-prev').disabled = page <= 1;
+  document.getElementById('pag-next').disabled = page >= totalPages;
+}
+
+function changePage(d) { page += d; renderTable(); window.scrollTo(0,0); }
+
+// ── REPORT ──
+function renderReport() {
+  const body = document.getElementById('report-body');
+  if (!all.length) {
+    body.innerHTML = '<div class="report-empty">Загрузите данные во вкладке «Журнал записей»</div>';
+    document.getElementById('report-totals').style.display = 'none';
+    return;
+  }
+
+  const empMap = {};
+  const clientEmpVisits = {};
+  const sorted_all = [...all].sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||''));
+
+  sorted_all.forEach(a => {
+    const empName = a._empName || '—';
+    const clientId = String(a.client_id || '');
+    if (!empMap[empName]) empMap[empName] = {
+      services:{}, totalRevenue:0, totalVisits:0,
+      clients:new Set(), finishedVisits:0, cancellations:0, clientVisitCounts:{}
+    };
+    const emp = empMap[empName];
+    emp.totalVisits++;
+    if (a.status === 'finished') emp.finishedVisits++;
+    if (a.status === 'cancelled' || a.status === 'cancelled_by_sms') emp.cancellations++;
+    if (clientId) {
+      emp.clients.add(clientId);
+      if (a.status === 'finished') emp.clientVisitCounts[clientId] = (emp.clientVisitCounts[clientId]||0) + 1;
+    }
+
+    // Выручка и услуги — только завершённые визиты
+    if (a.status !== 'finished') return;
+
+    let svcs = [];
+    try { svcs = typeof a.appointed_services === 'string' ? JSON.parse(a.appointed_services) : (a.appointed_services || []); } catch(e) {}
+    const visitPrice = parseFloat(a.price || 0);
+
+    if (svcs.length > 0) {
+      const rawTotal = svcs.reduce((s, svc) => s + parseFloat(svc.price||0)*parseInt(svc.quantity||1), 0);
+      svcs.forEach(svc => {
+        const name = svc.name || '';
+        if (!name || name === '—') return;
+        if (parseFloat(svc.price || 0) <= 1) return; // скрываем услуги за 1 рубль и меньше
+        const qty = parseInt(svc.quantity||1);
+        const rawSvcPrice = parseFloat(svc.price||0)*qty;
+        const svcPrice = rawTotal>0&&visitPrice>0 ? visitPrice*(rawSvcPrice/rawTotal) : rawSvcPrice;
+        if (!emp.services[name]) emp.services[name] = {qty:0,revenue:0};
+        emp.services[name].qty += qty;
+        emp.services[name].revenue += svcPrice;
+        emp.totalRevenue += svcPrice;
+      });
+    } else {
+      const name = a.name || '';
+      if (!name || name === '—') return;
+      if (!emp.services[name]) emp.services[name] = {qty:0,revenue:0};
+      emp.services[name].qty += 1;
+      emp.services[name].revenue += visitPrice;
+      emp.totalRevenue += visitPrice;
+    }
+  });
+
+  Object.values(empMap).forEach(emp => {
+    emp.avgCheck = emp.finishedVisits > 0 ? Math.round(emp.totalRevenue / emp.finishedVisits) : 0;
+  });
+
+  const sortedEmps = Object.entries(empMap).sort((a,b) => b[1].totalRevenue - a[1].totalRevenue);
+  const totalRev = sortedEmps.reduce((s,[,e]) => s+e.totalRevenue, 0);
+  const totalVisits = sortedEmps.reduce((s,[,e]) => s+e.totalVisits, 0);
+  const allSvcNames = new Set(sortedEmps.flatMap(([,e]) => Object.keys(e.services)));
+
+  document.getElementById('rt-revenue').textContent = totalRev.toLocaleString('ru') + ' ₽';
+  document.getElementById('rt-visits').textContent = totalVisits.toLocaleString('ru');
+  document.getElementById('rt-employees').textContent = sortedEmps.length;
+  document.getElementById('rt-services').textContent = allSvcNames.size;
+  document.getElementById('report-totals').style.display = 'flex';
+
+  // График выручки по дням
+  const dayRevMap = {};
+  all.forEach(a => {
+    if (a.status !== 'finished') return;
+    const d = (a.start_datetime||'').slice(0,10);
+    if (!d) return;
+    dayRevMap[d] = (dayRevMap[d] || 0) + parseFloat(a.price || 0);
+  });
+  const dayKeys = Object.keys(dayRevMap).sort();
+  const dayVals = dayKeys.map(d => dayRevMap[d]);
+  const maxVal = Math.max(...dayVals, 1);
+  const chartW = Math.max(dayKeys.length * 18, 400);
+
+  const bars = dayKeys.map((d, i) => {
+    const h = Math.round((dayVals[i] / maxVal) * 80);
+    const label = d.slice(5).replace('-', '.');
+    const rev = dayVals[i].toLocaleString('ru');
+    return `<g transform="translate(${i*18},0)">
+      <rect x="2" y="${84-h}" width="14" height="${h}" fill="var(--accent)" rx="2" opacity="0.85">
+        <title>${label}: ${rev} ₽</title>
+      </rect>
+      ${i % Math.ceil(dayKeys.length/10) === 0 ? `<text x="9" y="100" text-anchor="middle" fill="#484f58" font-size="8">${label}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  const chartHtml = dayKeys.length > 0 ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">График выручки по дням</div>
+      <div style="overflow-x:auto">
+        <svg width="${chartW}" height="108" style="display:block">
+          <line x1="0" y1="84" x2="${chartW}" y2="84" stroke="#21262d" stroke-width="1"/>
+          ${bars}
+        </svg>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:right">Наведите на столбик для суммы</div>
+    </div>` : '';
+
+  // Сравнение с прошлым периодом (синтетическое — сравниваем первую и вторую половину периода)
+  const fromVal = document.getElementById('f-from').value;
+  const toVal = document.getElementById('f-to').value;
+  let compareHtml = '';
+  if (fromVal && toVal) {
+    const from = new Date(fromVal), to = new Date(toVal);
+    const mid = new Date((from.getTime() + to.getTime()) / 2);
+    const midStr = fmt(mid);
+    const rev1 = all.filter(a => a.status==='finished' && (a.start_datetime||'').slice(0,10) < midStr).reduce((s,a)=>s+parseFloat(a.price||0),0);
+    const rev2 = all.filter(a => a.status==='finished' && (a.start_datetime||'').slice(0,10) >= midStr).reduce((s,a)=>s+parseFloat(a.price||0),0);
+    const vis1 = all.filter(a => (a.start_datetime||'').slice(0,10) < midStr).length;
+    const vis2 = all.filter(a => (a.start_datetime||'').slice(0,10) >= midStr).length;
+    const revDiff = rev1 > 0 ? Math.round((rev2-rev1)/rev1*100) : 0;
+    const visDiff = vis1 > 0 ? Math.round((vis2-vis1)/vis1*100) : 0;
+    const arr = (v) => v >= 0 ? `<span style="color:var(--success)">▲ +${v}%</span>` : `<span style="color:var(--danger)">▼ ${v}%</span>`;
+    compareHtml = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">
+      <div style="font-size:13px;font-weight:600;width:100%;margin-bottom:4px">Сравнение: первая vs вторая половина периода</div>
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ВЫРУЧКА</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px">${rev1.toLocaleString('ru')} ₽ → ${rev2.toLocaleString('ru')} ₽ ${arr(revDiff)}</div>
+      </div>
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ВИЗИТЫ</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px">${vis1} → ${vis2} ${arr(visDiff)}</div>
+      </div>
+    </div>`;
+  }
+
+  body.innerHTML = chartHtml + compareHtml + sortedEmps.map(([empName, emp], idx) => {
+    const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const initials = empName !== '—' ? empName.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase() : '?';
+    const svcsArr = Object.entries(emp.services).sort((a,b) => b[1].revenue - a[1].revenue);
+
+    const statItem = (label, value, col='var(--text)') =>
+      `<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;flex:1;min-width:100px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+        <div style="font-size:15px;font-weight:700;color:${col};font-family:'JetBrains Mono',monospace">${value}</div>
+      </div>`;
+
+    // Возвращаемость — распределение по кол-ву визитов
+    const visitDist = {};
+    Object.values(emp.clientVisitCounts).forEach(n => {
+      const key = n >= 5 ? '5+' : String(n);
+      visitDist[key] = (visitDist[key]||0) + 1;
+    });
+    const finishedClients = Object.keys(emp.clientVisitCounts).length;
+    const retentionHtml = ['1','2','3','4','5+'].map(k => {
+      const cnt = visitDist[k]||0;
+      const pct = finishedClients > 0 ? Math.round(cnt/finishedClients*100) : 0;
+      return `<div style="text-align:center;flex:1">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${k==='5+'?'5 и более':k} визит${k==='1'?'':'а'}</div>
+        <div style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace">${cnt}</div>
+        <div style="font-size:10px;color:var(--text2)">${pct}%</div>
+      </div>`;
+    }).join('');
+    const cancRate = emp.totalVisits > 0 ? Math.round(emp.cancellations/emp.totalVisits*100) : 0;
+
+    const statsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:16px;border-bottom:1px solid var(--border)">
+      ${statItem('Доход', emp.totalRevenue.toLocaleString('ru')+' ₽', 'var(--success)')}
+      ${statItem('Пациентов', emp.clients.size)}
+      ${statItem('Средний чек', emp.avgCheck > 0 ? emp.avgCheck.toLocaleString('ru')+' ₽' : '—')}
+      ${statItem('Отмен', emp.cancellations + (cancRate>0?' ('+cancRate+'%)':''), emp.cancellations>0?'var(--danger)':'var(--text2)')}
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Возвращаемость пациентов</div>
+      <div style="display:flex;gap:4px">${retentionHtml}</div>
+    </div>`;
+
+    const rows = svcsArr.map(([svcName, s]) => `
+      <tr>
+        <td>${esc(svcName)}</td>
+        <td><span class="svc-qty">${s.qty}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;color:var(--success)">${s.revenue.toLocaleString('ru')} ₽</td>
+        <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${s.qty>0?Math.round(s.revenue/s.qty).toLocaleString('ru')+' ₽':'—'}</td>
+      </tr>`).join('');
+
+    return `<div class="report-employee">
+      <div class="report-emp-header" onclick="toggleEmp(this)">
+        <div class="report-emp-left">
+          <div class="avatar" style="background:${color}22;color:${color};width:36px;height:36px;font-size:13px">${initials}</div>
+          <div>
+            <div class="report-emp-name">${esc(empName)}</div>
+            <div class="report-emp-total">${emp.finishedVisits} завершено · ${emp.totalVisits} всего · ${emp.clients.size} пациентов</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="report-emp-sum">${emp.totalRevenue.toLocaleString('ru')} ₽</div>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="report-emp-body">
+        ${statsHtml}
+        <table class="report-svc-table">
+          <thead><tr><th>Услуга</th><th>Кол-во</th><th>Выручка</th><th>Ср. цена</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEmp(header) {
+  header.nextElementSibling.classList.toggle('open');
+  header.querySelector('.chevron').classList.toggle('open');
+}
+
+// ── SCHEDULE ──
+function initSchedule() {
+  updateSchMonthLabel();
+  renderEmpSelector();
+}
+
+function updateSchMonthLabel() {
+  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  document.getElementById('sch-date-label').textContent = `${months[schMonth.getMonth()]} ${schMonth.getFullYear()}`;
+}
+
+function schChangeMonth(d) {
+  schMonth.setMonth(schMonth.getMonth() + d);
+  scheduleLoaded = false;
+  scheduleCache = {};
+  updateSchMonthLabel();
+  renderCalendar();
+}
+
+function renderEmpSelector() {
+  const sel = document.getElementById('sch-emp-selector');
+  if (!sel) return;
+  sel.innerHTML = '';
+  Object.keys(employeeMap).forEach(id => {
+    const name = (employeeMap[id] || '').trim();
+    if (EXCLUDED_EMPLOYEES.includes(name)) return;
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap';
+    label.innerHTML = `<input type="checkbox" value="${id}" style="accent-color:var(--accent)" onchange="toggleEmpSel('${id}')"> ${esc(name)}`;
+    sel.appendChild(label);
+  });
+}
+
+function toggleEmpSel(id) {
+  const sid = String(id);
+  if (selectedEmpIds.has(sid)) selectedEmpIds.delete(sid);
+  else selectedEmpIds.add(sid);
+}
+
+function selectAllEmps() {
+  Object.keys(employeeMap).forEach(id => selectedEmpIds.add(id));
+  document.querySelectorAll('#sch-emp-selector input[type=checkbox]').forEach(cb => cb.checked = true);
+}
+
+function clearEmpSel() {
+  selectedEmpIds.clear();
+  document.querySelectorAll('#sch-emp-selector input[type=checkbox]').forEach(cb => cb.checked = false);
+}
+
+function loadSchedule() {
+  if (!all.length) {
+    document.getElementById('schedule-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Сначала загрузите данные во вкладке «Журнал записей»</div>';
+    return;
+  }
+  if (!selectedEmpIds.size) {
+    document.getElementById('schedule-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Выберите сотрудников в списке слева</div>';
+    return;
+  }
+  renderCalendar();
+}
+
+async function loadRealSchedule() {
+  if (!selectedEmpIds.size) { alert('Выберите сотрудников'); return; }
+  const empIds = [...selectedEmpIds];
+  const year = schMonth.getFullYear(), month = schMonth.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const startDay = fmt(new Date(year, month, 1));
+  const finishDay = fmt(new Date(year, month, daysInMonth));
+  const dates = [];
+  for (let d = 1; d <= daysInMonth; d++) dates.push(fmt(new Date(year, month, d)));
+
+  const btn = document.getElementById('btn-load-graph');
+  btn.disabled = true;
+  scheduleCache = {};
+
+  for (let ei = 0; ei < empIds.length; ei++) {
+    const empId = empIds[ei];
+    document.getElementById('sch-status').textContent = `Загрузка ${ei+1}/${empIds.length}...`;
+    try {
+      const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/availableTimes?start_day=${startDay}&finish_day=${finishDay}&executor_id=${empId}`);
+      const items = (data && data.items && data.items !== 'No data') ? data.items : {};
+      dates.forEach(dateStr => {
+        const slots = items[dateStr] || [];
+        scheduleCache[`${empId}_${dateStr}`] = { isWorkDay: slots.length > 0, freeSlots: slots.length, slots };
+      });
+    } catch(e) {
+      dates.forEach(dateStr => { scheduleCache[`${empId}_${dateStr}`] = { isWorkDay: false, freeSlots: 0, slots: [] }; });
+    }
+    if (ei < empIds.length - 1) await new Promise(r => setTimeout(r, 200));
+  }
+
+  scheduleLoaded = true;
+  btn.disabled = false;
+  document.getElementById('sch-status').textContent = 'График загружен ✓';
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const empIds = [...selectedEmpIds];
+  if (!empIds.length) return;
+  const year = schMonth.getFullYear(), month = schMonth.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) days.push(new Date(year, month, d));
+
+  // Group all appointments by emp+date
+  const empDayMap = {};
+  empIds.forEach(id => { empDayMap[id] = {}; });
+  all.forEach(a => {
+    const execId = String(a.executor_id || a.employee_id || '');
+    if (!empIds.includes(execId)) return;
+    const dateKey = (a.start_datetime || '').replace('T',' ').slice(0,10);
+    if (!dateKey) return;
+    if (!empDayMap[execId][dateKey]) empDayMap[execId][dateKey] = [];
+    empDayMap[execId][dateKey].push(a);
+  });
+
+  const todayStr = fmt(new Date());
+  const dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
+
+  let html = `<div style="overflow:auto;max-height:calc(100vh - 160px)"><table style="border-collapse:collapse;font-size:12px;min-width:${90+empIds.length*130}px;width:100%;border-spacing:0">`;
+
+  // Header
+  html += '<thead><tr><th style="padding:10px 14px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);white-space:nowrap;min-width:80px;position:sticky;left:0;top:0;background:var(--surface);z-index:4">Дата</th>';
+  empIds.forEach((id, idx) => {
+    const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const name = employeeMap[id] || `#${id}`;
+    const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    html += `<th style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);min-width:130px;position:sticky;top:0;background:var(--surface);z-index:3">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:26px;height:26px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${initials}</div>
+        <span style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95px">${esc(name.split(' ').slice(0,2).join(' '))}</span>
+      </div>
+    </th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  days.forEach(day => {
+    const dateKey = fmt(day);
+    const dow = day.getDay();
+    const isToday = dateKey === todayStr;
+    const isWeekend = dow === 0 || dow === 6;
+    const rowBg = isToday ? 'rgba(79,142,247,0.06)' : isWeekend ? 'rgba(255,255,255,0.012)' : '';
+
+    // Считаем общую загруженность дня по всем выбранным сотрудникам
+    const dayTotalAppts = empIds.reduce((s, id) => s + (empDayMap[id][dateKey]||[]).length, 0);
+    const dayTotalFree = scheduleLoaded ? empIds.reduce((s, id) => {
+      const c = scheduleCache[`${id}_${dateKey}`];
+      return s + (c ? c.freeSlots : 0);
+    }, 0) : 0;
+    const dayTotal = dayTotalAppts + dayTotalFree;
+    const loadPct = dayTotal > 0 ? dayTotalAppts / dayTotal : 0;
+    const loadColor = scheduleLoaded
+      ? (loadPct >= 0.8 ? 'rgba(240,92,92,0.12)' : loadPct >= 0.5 ? 'rgba(245,166,35,0.10)' : loadPct > 0 ? 'rgba(52,199,123,0.10)' : '')
+      : '';
+
+    html += `<tr style="border-bottom:1px solid #1a1f2e;${loadColor?'background:'+loadColor:rowBg?'background:'+rowBg:''}">`;
+    html += `<td style="padding:8px 14px;white-space:nowrap;border-right:1px solid var(--border);position:sticky;left:0;background:${isToday?'rgba(79,142,247,0.12)':isWeekend?'rgba(255,255,255,0.012)':'var(--bg)'}">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;${isToday?'color:var(--accent);font-weight:700':isWeekend?'color:var(--muted)':'color:var(--text2)'}">${day.getDate()} ${dayNames[dow]}</span>
+      ${scheduleLoaded && dayTotal > 0 ? `<div style="width:100%;height:3px;background:var(--border);border-radius:2px;margin-top:3px"><div style="width:${Math.round(loadPct*100)}%;height:100%;background:${loadPct>=0.8?'var(--danger)':loadPct>=0.5?'var(--warn)':'var(--success)'};border-radius:2px"></div></div>` : ''}
+    </td>`;
+
+    empIds.forEach((id, idx) => {
+      const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+      const appts = (empDayMap[id][dateKey] || []).slice().sort((a,b) =>
+        ((a.start_datetime||'').split(' ')[1]||'').localeCompare((b.start_datetime||'').split(' ')[1]||''));
+
+      const cacheKey = `${id}_${dateKey}`;
+      const cached = scheduleCache[cacheKey];
+
+      let cellContent = '';
+
+      if (scheduleLoaded && cached) {
+        if (!cached.isWorkDay && !appts.length) {
+          html += `<td style="padding:6px 8px;border-left:1px solid var(--border);text-align:center;background:rgba(0,0,0,0.08)">
+            <span style="font-size:10px;color:var(--muted);opacity:0.3">выходной</span>
+          </td>`;
+          return;
+        }
+        // Free slots in green
+        const freeHtml = (cached.slots || []).map(s => {
+          const t = typeof s === 'string' ? s.split(' ')[1]?.slice(0,5) : '';
+          return t ? `<div onclick="openBooking('${id}','${dateKey}','${t}')" style="background:rgba(52,199,123,0.15);border:1px solid rgba(52,199,123,0.35);border-radius:4px;padding:2px 5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--success);font-weight:600;margin-bottom:2px;cursor:pointer" title="Записать пациента">🟢 ${t} +</div>` : '';
+        }).filter(Boolean).join('');
+        cellContent = freeHtml || `<div style="font-size:10px;color:var(--danger);margin-bottom:3px">🔴 нет окон</div>`;
+      } else if (!appts.length) {
+        html += `<td style="padding:6px 8px;border-left:1px solid var(--border);text-align:center;vertical-align:middle">
+          <span style="font-size:10px;color:var(--muted);opacity:0.3">—</span>
+        </td>`;
+        return;
+      }
+
+      const apptHtml = appts.map(a => {
+        const t  = (a.start_datetime||'').split(' ')[1]?.slice(0,5)||'';
+        const t2 = (a.finish_datetime||'').split(' ')[1]?.slice(0,5)||'';
+        const client = a.client_name || '—';
+        const sc = {finished:'#34c77b',cancelled:'#f05c5c',missed:'#f05c5c',confirmed:'#4f8ef7',scheduled:'#f5a623'}[a.status]||color;
+        return `<div style="background:${color}15;border-left:2px solid ${sc};border-radius:0 4px 4px 0;padding:3px 6px;margin-bottom:2px" title="${esc(client)}">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${sc};font-weight:600">${t}${t2?'–'+t2:''}</span>
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${esc(client.split(' ')[0])} ${esc((client.split(' ')[1]||'')[0]||'')}.</div>
+        </div>`;
+      }).join('');
+
+      html += `<td style="padding:5px 6px;border-left:1px solid var(--border);vertical-align:top">${cellContent}${apptHtml}</td>`;
+    });
+
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('schedule-body').innerHTML = html;
+  document.getElementById('sch-status').textContent = scheduleLoaded ? 'График загружен ✓' : `${empIds.length} сотр.`;
+}
+
+// ── CLIENT CARD ──
+function showClientCard(idx) {
+  const a = all[idx];
+  if (!a) return;
+
+  const STATUS_MAP = {scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+  const STATUS_CLS = {finished:'var(--success)',cancelled:'var(--danger)',missed:'var(--danger)',confirmed:'var(--accent)',scheduled:'var(--warn)',arrived:'#45d4fa',in_progress:'#7c6af5'};
+
+  let svcs = [];
+  try { svcs = typeof a.appointed_services === 'string' ? JSON.parse(a.appointed_services) : (a.appointed_services || []); } catch(e) {}
+
+  const dt = (a.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+  const time = (a.start_datetime||'').slice(11,16);
+  const time2 = (a.finish_datetime||'').slice(11,16);
+  const price = parseFloat(a.price||0);
+  const statusColor = STATUS_CLS[a.status] || 'var(--text2)';
+
+  // История визитов этого клиента
+  const clientHistory = all
+    .filter(x => x.client_id === a.client_id && x.id !== a.id)
+    .sort((x,y) => (y.start_datetime||'').localeCompare(x.start_datetime||''))
+    .slice(0, 5);
+
+  const historyHtml = clientHistory.length ? `
+    <div style="margin-top:16px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Другие визиты</div>
+      ${clientHistory.map(h => {
+        const hdt = (h.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+        const hprice = parseFloat(h.price||0);
+        const hsc = STATUS_CLS[h.status]||'var(--text2)';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${hdt}</span>
+            <span style="font-size:12px;color:var(--text2);margin-left:8px">${esc(h._empName||'—')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:${hsc}">${STATUS_MAP[h.status]||h.status||'—'}</span>
+            ${hprice > 0 ? `<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--success)">${hprice.toLocaleString('ru')} ₽</span>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const svcsHtml = svcs.filter(s => s.name && parseFloat(s.price||0) > 1).map(s =>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${esc(s.name)}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--success)">${parseFloat(s.price||0).toLocaleString('ru')} ₽</span>
+    </div>`).join('');
+
+  document.getElementById('cm-name').textContent = a.client_name || '—';
+  document.getElementById('cm-body').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 14px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px">ДАТА И ВРЕМЯ</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px">${dt} ${time}${time2?'–'+time2:''}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 14px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px">ВРАЧ</div>
+        <div style="font-size:13px">${esc(a._empName||'—')}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 14px;flex:1;min-width:100px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px">СТАТУС</div>
+        <div style="font-size:13px;color:${statusColor};font-weight:600">${STATUS_MAP[a.status]||a.status||'—'}</div>
+      </div>
+      ${price > 0 ? `<div style="background:var(--surface2);border-radius:8px;padding:8px 14px;flex:1;min-width:100px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px">СУММА</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--success);font-weight:700">${price.toLocaleString('ru')} ₽</div>
+      </div>` : ''}
+    </div>
+    ${svcsHtml ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Услуги</div>${svcsHtml}` : ''}
+    <div style="font-size:11px;color:var(--muted);margin-top:12px">Всего визитов в загруженном периоде: <strong style="color:var(--text)">${all.filter(x=>x.client_id===a.client_id).length}</strong></div>
+    ${historyHtml}
+  `;
+
+  currentNoteClientId = a.client_id;
+  currentNoteClientName = a.client_name || '—';
+  // Save author name from localStorage
+  const savedAuthor = localStorage.getItem('klientiks_note_author') || '';
+  document.getElementById('cm-note-author').value = savedAuthor;
+  document.getElementById('cm-note-author').onchange = () => localStorage.setItem('klientiks_note_author', document.getElementById('cm-note-author').value);
+
+  const modal = document.getElementById('client-modal');
+  modal.style.display = 'flex';
+  loadClientNotes(a.client_id);
+}
+
+function closeClientCard() {
+  document.getElementById('client-modal').style.display = 'none';
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  const body = document.getElementById('dashboard-body');
+  if (!all.length) {
+    body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>';
+    return;
+  }
+
+  const todayStr = fmt(new Date());
+  const now = new Date();
+
+  // Current and previous month
+  const curMonthStr = todayStr.slice(0, 7);
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthStr = fmt(prevMonth).slice(0, 7);
+
+  const finished = all.filter(a => a.status === 'finished');
+  const cancelled = all.filter(a => a.status === 'cancelled' || a.status === 'cancelled_by_sms');
+
+  // ── PATIENTS ──
+  // New vs repeat (first visit = new)
+  const clientFirstVisit = {};
+  all.filter(a => a.status === 'finished').sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||'')).forEach(a => {
+    if (!clientFirstVisit[a.client_id]) clientFirstVisit[a.client_id] = (a.start_datetime||'').slice(0,7);
+  });
+
+  // Monthly new patients
+  const monthlyNew = {};
+  const monthlyRepeat = {};
+  const monthlyVisits = {};
+  const monthlyRevenue = {};
+  const monthlyCancelled = {};
+
+  finished.forEach(a => {
+    const m = (a.start_datetime||'').slice(0,7);
+    if (!m) return;
+    monthlyRevenue[m] = (monthlyRevenue[m]||0) + parseFloat(a.price||0);
+    monthlyVisits[m] = (monthlyVisits[m]||0) + 1;
+    if (clientFirstVisit[a.client_id] === m) monthlyNew[m] = (monthlyNew[m]||0) + 1;
+    else monthlyRepeat[m] = (monthlyRepeat[m]||0) + 1;
+  });
+  cancelled.forEach(a => {
+    const m = (a.start_datetime||'').slice(0,7);
+    if (m) monthlyCancelled[m] = (monthlyCancelled[m]||0) + 1;
+  });
+
+  const MONTHS_SHORT2 = {1:'янв',2:'фев',3:'мар',4:'апр',5:'май',6:'июн',7:'июл',8:'авг',9:'сен',10:'окт',11:'ноя',12:'дек'};
+  const monthLabel = m => {
+    const [y, mo] = m.split('-');
+    return (MONTHS_SHORT2[parseInt(mo)]||mo) + ' ' + y;
+  };
+  const months = [...new Set([...Object.keys(monthlyVisits), ...Object.keys(monthlyRevenue)])].sort();
+
+  // Retention: из всех пациентов с хотя бы 1 визитом — сколько вернулись
+  const clientVisitDates = {};
+  finished.forEach(a => {
+    if (!clientVisitDates[a.client_id]) clientVisitDates[a.client_id] = [];
+    clientVisitDates[a.client_id].push((a.start_datetime||'').slice(0,10));
+  });
+  let returned30 = 0, returned60 = 0, returned90 = 0;
+  const totalRetentionBase = Object.keys(clientVisitDates).length; // все с хотя бы 1 визитом
+  Object.values(clientVisitDates).forEach(dates => {
+    dates.sort();
+    if (dates.length < 2) return; // 1 визит — не вернулся ни в один период
+    for (let i = 1; i < dates.length; i++) {
+      const diff = (new Date(dates[i]) - new Date(dates[i-1])) / 86400000;
+      if (diff <= 30) { returned30++; break; }
+    }
+    for (let i = 1; i < dates.length; i++) {
+      const diff = (new Date(dates[i]) - new Date(dates[i-1])) / 86400000;
+      if (diff <= 60) { returned60++; break; }
+    }
+    for (let i = 1; i < dates.length; i++) {
+      const diff = (new Date(dates[i]) - new Date(dates[i-1])) / 86400000;
+      if (diff <= 90) { returned90++; break; }
+    }
+  });
+  const totalClients = totalRetentionBase;
+
+  // Avg days between visits
+  let totalGaps = 0, gapCount = 0;
+  Object.values(clientVisitDates).forEach(dates => {
+    dates.sort();
+    for (let i = 1; i < dates.length; i++) {
+      totalGaps += (new Date(dates[i]) - new Date(dates[i-1])) / 86400000;
+      gapCount++;
+    }
+  });
+  const avgGap = gapCount > 0 ? Math.round(totalGaps / gapCount) : 0;
+
+  // Outflow: clients who visited before but not in last 90 days
+  const ninetyDaysAgo = fmt(new Date(now.getTime() - 90*86400000));
+  const churned = Object.entries(clientVisitDates).filter(([id, dates]) => {
+    const last = dates.slice().sort().pop();
+    return last < ninetyDaysAgo;
+  }).length;
+
+  // ── OPERATIONS ──
+  // Conversion: scheduled → finished per month
+  const monthlyScheduled = {};
+  all.forEach(a => {
+    const m = (a.start_datetime||'').slice(0,7);
+    if (m) monthlyScheduled[m] = (monthlyScheduled[m]||0) + 1;
+  });
+
+  const totalAll = all.length;
+  const totalFinished = finished.length;
+  const totalCancelled = cancelled.length;
+  const conversionRate = totalAll > 0 ? Math.round(totalFinished/totalAll*100) : 0;
+  const cancellationRate = totalAll > 0 ? Math.round(totalCancelled/totalAll*100) : 0;
+
+  // ── DOCTORS RATING ──
+  const empMap = {};
+  all.forEach(a => {
+    const name = a._empName || '—';
+    if (name === '—') return;
+    if (!empMap[name]) empMap[name] = { finished:0, total:0, cancelled:0, revenue:0, clients:new Set(), clientVisits:{} };
+    const e = empMap[name];
+    e.total++;
+    if (a.status === 'finished') {
+      e.finished++;
+      e.revenue += parseFloat(a.price||0);
+      if (a.client_id) {
+        e.clients.add(a.client_id);
+        e.clientVisits[a.client_id] = (e.clientVisits[a.client_id]||0) + 1;
+      }
+    }
+    if (a.status === 'cancelled' || a.status === 'cancelled_by_sms') e.cancelled++;
+  });
+
+  const empRating = Object.entries(empMap)
+    .map(([name, e]) => ({
+      name,
+      finished: e.finished,
+      total: e.total,
+      cancelled: e.cancelled,
+      revenue: e.revenue,
+      clients: e.clients.size,
+      avgCheck: e.finished > 0 ? Math.round(e.revenue/e.finished) : 0,
+      conversion: e.total > 0 ? Math.round(e.finished/e.total*100) : 0,
+      cancRate: e.total > 0 ? Math.round(e.cancelled/e.total*100) : 0,
+      retention: (() => {
+        const vals = Object.values(e.clientVisits);
+        const returning = vals.filter(v=>v>1).length;
+        return vals.length > 0 ? Math.round(returning/vals.length*100) : 0;
+      })()
+    }))
+    .sort((a,b) => b.revenue - a.revenue);
+
+  // ── MONTHLY TABLE ──
+  // For each month: primary, secondary, came 2nd time, came 3rd time, avg check, revenue, churn
+  const monthlyTableRows = months.map(m => {
+    const mFinished = finished.filter(a => (a.start_datetime||'').slice(0,7) === m);
+    const mRev = mFinished.reduce((s,a) => s+parseFloat(a.price||0), 0);
+    const mAvgCheck = mFinished.length > 0 ? Math.round(mRev/mFinished.length) : 0;
+    const mPrimary = monthlyNew[m] || 0;
+    const mSecondary = monthlyRepeat[m] || 0;
+
+    // Clients who had their Nth visit this month
+    const clientVisitNum = {}; // client_id -> visit number by this month
+    finished.filter(a => (a.start_datetime||'').slice(0,7) <= m)
+      .sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||''))
+      .forEach(a => {
+        if (!clientVisitNum[a.client_id]) clientVisitNum[a.client_id] = {};
+        const mKey = (a.start_datetime||'').slice(0,7);
+        if (!clientVisitNum[a.client_id][mKey]) clientVisitNum[a.client_id][mKey] = 0;
+        clientVisitNum[a.client_id][mKey]++;
+      });
+
+    // Count clients whose cumulative visit count reached 2 or 3 this month
+    const cumVisits = {}; // client_id -> total visits up to and including this month
+    finished.filter(a => (a.start_datetime||'').slice(0,7) <= m)
+      .sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||''))
+      .forEach(a => { cumVisits[a.client_id] = (cumVisits[a.client_id]||0) + 1; });
+    const prevCumVisits = {};
+    finished.filter(a => (a.start_datetime||'').slice(0,7) < m)
+      .sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||''))
+      .forEach(a => { prevCumVisits[a.client_id] = (prevCumVisits[a.client_id]||0) + 1; });
+
+    let to2nd = 0, to3rd = 0;
+    mFinished.forEach(a => {
+      const prev = prevCumVisits[a.client_id] || 0;
+      const cur = cumVisits[a.client_id] || 0;
+      if (prev < 2 && cur >= 2) to2nd++;
+      if (prev < 3 && cur >= 3) to3rd++;
+    });
+
+    // Churn: clients who had last visit in this month and never came back
+    const todayStr2 = fmt(new Date());
+    const mChurn = Object.entries(clientVisitDates).filter(([id, dates]) => {
+      const sorted = [...dates].sort();
+      const lastInMonth = sorted.filter(d => d.slice(0,7) === m).pop();
+      const hasLater = sorted.some(d => d.slice(0,7) > m);
+      return lastInMonth && !hasLater && m < todayStr2.slice(0,7);
+    }).length;
+
+    const rev2pct = mFinished.length > 0 ? Math.round(to2nd/mFinished.length*100) : 0;
+    const rev3pct = mFinished.length > 0 ? Math.round(to3rd/mFinished.length*100) : 0;
+
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:9px 12px;font-weight:600;white-space:nowrap">${monthLabel(m)}</td>
+      <td style="padding:9px 12px;text-align:right;color:var(--accent)">${mPrimary}</td>
+      <td style="padding:9px 12px;text-align:right;color:var(--text2)">${mSecondary}</td>
+      <td style="padding:9px 12px;text-align:right">${to2nd} <span style="color:var(--muted);font-size:10px">(${rev2pct}%)</span></td>
+      <td style="padding:9px 12px;text-align:right">${to3rd} <span style="color:var(--muted);font-size:10px">(${rev3pct}%)</span></td>
+      <td style="padding:9px 12px;text-align:right;font-family:'JetBrains Mono',monospace">${mAvgCheck > 0 ? mAvgCheck.toLocaleString('ru')+' ₽' : '—'}</td>
+      <td style="padding:9px 12px;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--success);font-weight:600">${mRev.toLocaleString('ru')} ₽</td>
+      <td style="padding:9px 12px;text-align:right;color:${mChurn > 20 ? 'var(--danger)' : 'var(--muted)'}">${mChurn}</td>
+    </tr>`;
+  }).join('');
+
+  // ── RENDER ──
+
+
+  const metricCard = (label, value, sub='', color='var(--text)') =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;flex:1;min-width:130px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${label}</div>
+      <div style="font-size:22px;font-weight:700;color:${color};font-family:'JetBrains Mono',monospace">${value}</div>
+      ${sub?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${sub}</div>`:''}
+    </div>`;
+
+  const sectionTitle = t => `<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px">${t}</div>`;
+
+  // Mini bar chart
+  const barChart = (data, labelFn, colorFn) => {
+    const max = Math.max(...data.map(d=>d.value), 1);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:flex-end;gap:6px;height:80px">
+        ${data.map(d => {
+          const h = Math.max(Math.round(d.value/max*72), d.value>0?4:0);
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <div style="font-size:9px;color:var(--muted)">${d.value>0?labelFn(d.value):''}</div>
+            <div style="width:100%;background:${colorFn(d)};border-radius:3px 3px 0 0;height:${h}px;min-height:${d.value>0?4:0}px" title="${d.label}: ${d.value}"></div>
+            <div style="font-size:9px;color:var(--muted);white-space:nowrap">${d.label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  };
+
+  const visitBars = months.map(m => ({label:monthLabel(m), value:monthlyVisits[m]||0}));
+  const newBars = months.map(m => ({label:monthLabel(m), value:monthlyNew[m]||0, isNew:true}));
+  const cancBars = months.map(m => ({label:monthLabel(m), value:monthlyCancelled[m]||0}));
+
+  // Retention bar
+  const retBars = [
+    {label:'30 дн', value:totalRetentionBase>0?Math.round(returned30/totalRetentionBase*100):0},
+    {label:'60 дн', value:totalRetentionBase>0?Math.round(returned60/totalRetentionBase*100):0},
+    {label:'90 дн', value:totalRetentionBase>0?Math.round(returned90/totalRetentionBase*100):0},
+  ];
+
+  // Doctor rows
+  const COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa','#f06292','#ff8a65'];
+  const doctorRows = empRating.map((e, i) => {
+    const color = COLORS[i % COLORS.length];
+    const initials = e.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const convColor = e.conversion >= 70 ? 'var(--success)' : e.conversion >= 50 ? 'var(--warn)' : 'var(--danger)';
+    const cancColor = e.cancRate <= 10 ? 'var(--success)' : e.cancRate <= 25 ? 'var(--warn)' : 'var(--danger)';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${initials}</div>
+          <div style="font-size:13px;font-weight:600">${esc(e.name)}</div>
+        </div>
+      </td>
+      <td style="padding:10px 12px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--success);font-weight:600">${e.revenue.toLocaleString('ru')} ₽</td>
+      <td style="padding:10px 12px;text-align:right;font-size:12px">${e.finished}</td>
+      <td style="padding:10px 12px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px">${e.avgCheck > 0 ? e.avgCheck.toLocaleString('ru')+' ₽' : '—'}</td>
+      <td style="padding:10px 12px;text-align:right;font-size:12px;color:${convColor}">${e.conversion}%</td>
+      <td style="padding:10px 12px;text-align:right;font-size:12px;color:${cancColor}">${e.cancRate}%</td>
+      <td style="padding:10px 12px;text-align:right;font-size:12px;color:var(--accent)">${e.retention}%</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:700">📈 Дашборд клиники</div>
+      <button onclick="renderDashboard()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+    </div>
+
+    ${sectionTitle('👥 Пациенты')}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${metricCard('Уникальных пациентов', new Set(all.map(a=>a.client_id)).size.toLocaleString('ru'))}
+      ${metricCard('Ср. дней между визитами', avgGap > 0 ? avgGap+' дн.' : '—', 'среднее по всем')}
+      ${metricCard('Отток (>90 дней)', churned.toLocaleString('ru'), 'не было >90 дней', churned > 100 ? 'var(--danger)' : 'var(--warn)')}
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:12px">Retention — возврат пациентов</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        ${retBars.map(r => `<div style="flex:1;min-width:80px;text-align:center">
+          <div style="font-size:24px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">${r.value}%</div>
+          <div style="font-size:11px;color:var(--muted)">вернулись за ${r.label}</div>
+        </div>`).join('')}
+      <div style="width:100%;margin-top:10px;font-size:11px;color:var(--muted);text-align:center">из ${totalRetentionBase.toLocaleString('ru')} пациентов с хотя бы 1 завершённым визитом</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Новые пациенты по месяцам</div>
+        ${barChart(newBars, v=>v, ()=>'var(--accent)')}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Визиты по месяцам</div>
+        ${barChart(visitBars, v=>v, ()=>'#34c77b')}
+      </div>
+    </div>
+
+    ${sectionTitle('⚙️ Операционка')}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${metricCard('Конверсия', conversionRate+'%', 'запись → завершён', conversionRate >= 70 ? 'var(--success)' : conversionRate >= 50 ? 'var(--warn)' : 'var(--danger)')}
+      ${metricCard('Отмены', cancellationRate+'%', totalCancelled.toLocaleString('ru')+' записей', cancellationRate > 20 ? 'var(--danger)' : 'var(--warn)')}
+      ${metricCard('Завершено', totalFinished.toLocaleString('ru'), 'из '+totalAll.toLocaleString('ru')+' всего', 'var(--success)')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Отмены по месяцам</div>
+    ${barChart(cancBars, v=>v, ()=>'var(--danger)')}
+
+    ${sectionTitle('📅 Помесячная аналитика')}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:700px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            ${['Месяц','Первичных','Вторичных','На 2й приём','На 3й приём','Ср. чек','Выручка','Отток'].map(h=>
+              `<th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;first-child:text-align:left">${h}</th>`
+            ).join('').replace('<th style="padding:10px 12px;text-align:right', '<th style="padding:10px 12px;text-align:left')}
+          </tr>
+        </thead>
+        <tbody>
+          ${monthlyTableRows}
+        </tbody>
+      </table>
+    </div>
+
+    ${sectionTitle('🏆 Рейтинг врачей')}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:10px 12px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Врач</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Выручка</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Визитов</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Ср. чек</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Конверсия</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Отмены</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Повторные</th>
+          </tr>
+        </thead>
+        <tbody>${doctorRows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px">
+      Конверсия = завершённые / все записи · Отмены = отменённые / все записи · Повторные = пациенты с 2+ визитами
+    </div>
+  `;
+}
+
+// ── FORECAST ──
+function renderForecast() {
+  const body = document.getElementById('forecast-body');
+  if (!all.length) {
+    body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>';
+    return;
+  }
+
+  const today = new Date();
+  const todayStr = fmt(today);
+  const monthStart = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  const monthEnd = new Date(today.getFullYear(), today.getMonth()+1, 0);
+  const monthEndStr = fmt(monthEnd);
+  const daysInMonth = monthEnd.getDate();
+  const daysPassed = today.getDate();
+  const daysLeft = daysInMonth - daysPassed;
+
+  // Завершённые визиты этого месяца по врачам
+  const empFinished = {}; // empName -> {revenue, count}
+  all.filter(a => a.status === 'finished' && (a.start_datetime||'').slice(0,10) >= monthStart && (a.start_datetime||'').slice(0,10) <= todayStr)
+    .forEach(a => {
+      const name = a._empName || '—';
+      if (!empFinished[name]) empFinished[name] = { revenue: 0, count: 0 };
+      empFinished[name].revenue += parseFloat(a.price || 0);
+      empFinished[name].count++;
+    });
+
+  // Запланированные визиты до конца месяца по врачам
+  const empUpcoming = {}; // empName -> count
+  all.filter(a => {
+    const dt = (a.start_datetime||'').slice(0,10);
+    return (a.status === 'scheduled' || a.status === 'confirmed') && dt > todayStr && dt <= monthEndStr;
+  }).forEach(a => {
+    const name = a._empName || '—';
+    empUpcoming[name] = (empUpcoming[name] || 0) + 1;
+  });
+
+  // Все врачи которые есть в этом месяце
+  const allEmps = new Set([...Object.keys(empFinished), ...Object.keys(empUpcoming)]);
+
+  // Считаем прогноз по каждому врачу
+  const empForecast = [];
+  allEmps.forEach(name => {
+    if (name === '—') return;
+    const fin = empFinished[name] || { revenue: 0, count: 0 };
+    const upcoming = empUpcoming[name] || 0;
+    const avgCheck = fin.count > 0 ? fin.revenue / fin.count : 0;
+    const forecastAdd = Math.round(avgCheck * upcoming);
+    const forecastTotal = fin.revenue + forecastAdd;
+    empForecast.push({ name, finRevenue: fin.revenue, finCount: fin.count, upcoming, avgCheck, forecastAdd, forecastTotal });
+  });
+  empForecast.sort((a,b) => b.forecastTotal - a.forecastTotal);
+
+  const totalFinished = empForecast.reduce((s,e) => s + e.finRevenue, 0);
+  const totalForecastAdd = empForecast.reduce((s,e) => s + e.forecastAdd, 0);
+  const totalForecast = totalFinished + totalForecastAdd;
+  const totalUpcoming = empForecast.reduce((s,e) => s + e.upcoming, 0);
+  const totalFinCount = empForecast.reduce((s,e) => s + e.finCount, 0);
+
+  const COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa','#f06292','#ff8a65'];
+
+  const monthName = today.toLocaleDateString('ru', { month: 'long', year: 'numeric' });
+
+  // Progress bar for month
+  const monthPct = Math.round(daysPassed / daysInMonth * 100);
+
+  const empRows = empForecast.map((e, i) => {
+    const color = COLORS[i % COLORS.length];
+    const initials = e.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const barPct = totalForecast > 0 ? Math.round(e.forecastTotal / totalForecast * 100) : 0;
+    const hasAvg = e.avgCheck > 0;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${initials}</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${esc(e.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${e.finCount} завершено · ${e.upcoming} предстоит · ср. чек ${hasAvg ? Math.round(e.avgCheck).toLocaleString('ru')+' ₽' : 'нет данных'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--success)">${e.forecastTotal.toLocaleString('ru')} ₽</div>
+          ${e.forecastAdd > 0 ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">+ ${e.forecastAdd.toLocaleString('ru')} ₽ прогноз</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px">
+        <div style="flex:1;background:var(--surface2);border-radius:6px;padding:6px 10px">
+          <div style="color:var(--muted);margin-bottom:2px">Уже заработано</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--success)">${e.finRevenue.toLocaleString('ru')} ₽</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:6px;padding:6px 10px">
+          <div style="color:var(--muted);margin-bottom:2px">Прогноз с записей</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${hasAvg?'var(--accent)':'var(--muted)'}">${hasAvg ? e.forecastAdd.toLocaleString('ru')+' ₽' : 'нет ср. чека'}</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:6px;padding:6px 10px">
+          <div style="color:var(--muted);margin-bottom:2px">Доля от клиники</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:600">${barPct}%</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:20px;font-weight:700;text-transform:capitalize">${monthName}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">День ${daysPassed} из ${daysInMonth} · осталось ${daysLeft} дней</div>
+      </div>
+      <button onclick="renderForecast()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+    </div>
+
+    <!-- Прогресс месяца -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px">
+        <span>Прогресс месяца</span><span>${monthPct}%</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
+        <div style="width:${monthPct}%;height:100%;background:var(--accent);border-radius:4px"></div>
+      </div>
+    </div>
+
+    <!-- Итог по клинике -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1;min-width:150px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Уже заработано</div>
+        <div style="font-size:24px;font-weight:700;color:var(--success);font-family:'JetBrains Mono',monospace">${totalFinished.toLocaleString('ru')} ₽</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${totalFinCount} завершённых визитов</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1;min-width:150px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Прогноз до конца месяца</div>
+        <div style="font-size:24px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">${totalForecast.toLocaleString('ru')} ₽</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${totalUpcoming} предстоящих записей</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1;min-width:150px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Ожидается дополнительно</div>
+        <div style="font-size:24px;font-weight:700;color:#f5a623;font-family:'JetBrains Mono',monospace">+ ${totalForecastAdd.toLocaleString('ru')} ₽</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">на основе среднего чека</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">По врачам</div>
+    ${empRows}
+    <div style="font-size:11px;color:var(--muted);margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:8px">
+      ⚠️ Прогноз рассчитан на основе среднего чека завершённых визитов текущего месяца. Учитываются только записи со статусом «Запланирован» и «Подтверждён» до конца месяца из загруженного периода.
+    </div>
+  `;
+}
+
+// ── CALLS TAB ──
+let callsFilter = '';
+let allCallEntries = [];
+
+async function loadCallsTab() {
+  const body = document.getElementById('calls-body');
+  const statsEl = document.getElementById('calls-stats');
+  body.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
+
+  try {
+    // Load all call_log entries
+    const logs = await sbGet('call_log', 'select=*&order=updated_at.desc');
+
+    // Merge with journal data for context
+    allCallEntries = logs.map(log => {
+      const visit = all.find(a => a.id === log.visit_id);
+      return { ...log, _visit: visit };
+    });
+
+    // Also add cancelled-not-rescheduled from journal that have no log entry yet
+    const loggedIds = new Set(logs.map(l => l.visit_id));
+    const unlogged = all.filter(a => {
+      if (a.status !== 'cancelled' && a.status !== 'cancelled_by_sms') return false;
+      if (loggedIds.has(a.id)) return false;
+      return !all.some(x =>
+        x.client_id === a.client_id && x.id !== a.id &&
+        (x.status === 'scheduled' || x.status === 'confirmed') &&
+        (x.start_datetime||'') > (a.start_datetime||'')
+      );
+    });
+
+    const pendingEntries = unlogged.map(a => ({
+      visit_id: a.id,
+      client_id: a.client_id,
+      client_name: a.client_name || '—',
+      visit_date: (a.start_datetime||'').slice(0,10),
+      doctor_name: a._empName || '—',
+      status: 'pending',
+      comment: null,
+      admin_name: null,
+      updated_at: null,
+      _visit: a
+    }));
+
+    allCallEntries = [...allCallEntries, ...pendingEntries]
+      .sort((a,b) => {
+        // Sort: pending first, then by visit date desc
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        return (b.visit_date||'').localeCompare(a.visit_date||'');
+      });
+
+    // Stats
+    const counts = {};
+    CALL_STATUSES.forEach(s => counts[s.key] = 0);
+    allCallEntries.forEach(e => counts[e.status] = (counts[e.status]||0) + 1);
+    const total = allCallEntries.length;
+    const done = (counts.booked||0) + (counts.refused||0);
+    const pct = total > 0 ? Math.round(done/total*100) : 0;
+
+    statsEl.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Всего</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace">${total}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Не звонили</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--warn)">${counts.pending||0}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">В работе</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">${(counts.no_answer||0)+(counts.callback||0)}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Записан</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--success)">${counts.booked||0}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Отказался</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--danger)">${counts.refused||0}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Отработано</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--success)">${pct}%</div>
+      </div>
+    `;
+
+    renderCallsTable();
+  } catch(e) {
+    body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger)">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function setCallFilter(status) {
+  callsFilter = status;
+  document.querySelectorAll('[id^="cf-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('cf-' + (status||'all')).classList.add('active');
+  renderCallsTable();
+}
+
+function renderCallsTable() {
+  const body = document.getElementById('calls-body');
+  const CALL_COLORS = {pending:'var(--warn)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)'};
+  const CALL_LABELS = {pending:'Не звонили',no_answer:'Не дозвонились',callback:'Перезвонит',booked:'Записан',refused:'Отказался'};
+
+  const filtered = callsFilter ? allCallEntries.filter(e => e.status === callsFilter) : allCallEntries;
+
+  if (!filtered.length) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Нет записей</div>';
+    return;
+  }
+
+  body.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">
+      <thead>
+        <tr>
+          ${['Клиент','Телефон','Дата визита','Врач','Статус','Комментарий','Кто работал','Обновлено',''].map(h=>
+            `<th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">${h}</th>`
+          ).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(e => {
+          const dt = e.visit_date ? e.visit_date.split('-').reverse().join('.') : '—';
+          const updDt = e.updated_at ? new Date(e.updated_at).toLocaleDateString('ru',{day:'numeric',month:'short'}) : '—';
+          const sc = CALL_COLORS[e.status] || 'var(--muted)';
+          const sl = CALL_LABELS[e.status] || e.status;
+          const aIdx = e._visit ? all.indexOf(e._visit) : -1;
+          return `<tr style="border-bottom:1px solid #1a1f2e" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+            <td style="padding:10px 12px">
+              <div style="font-weight:600;color:var(--accent);cursor:pointer" onclick="${aIdx>=0?`showClientCard(${aIdx})`:''}">
+                ${esc(e.client_name||'—')}${notesBadge(e.client_id)}
+              </div>
+            </td>
+            <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px">
+              ${e._visit?.client_phone ? esc(e._visit.client_phone) : (e.client_phone ? esc(e.client_phone) : '—')}
+            </td>
+            <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${dt}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${esc(e.doctor_name||'—')}</td>
+            <td style="padding:10px 12px">
+              <span style="font-size:11px;font-weight:600;color:${sc};background:${sc}18;padding:3px 10px;border-radius:20px">${sl}</span>
+            </td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text2);max-width:180px">${esc(e.comment||'—')}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${esc(e.admin_name||'—')}</td>
+            <td style="padding:10px 12px;font-size:11px;color:var(--muted)">${updDt}</td>
+            <td style="padding:10px 12px">
+              <button onclick="${aIdx>=0?`openCallLog(${aIdx})`:'openCallLogById('+e.visit_id+')'}" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text2);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">Изменить</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openCallLogById(visitId) {
+  const aIdx = all.findIndex(a => a.id === visitId);
+  if (aIdx >= 0) openCallLog(aIdx);
+}
+
+// Override saveCallLog to refresh calls tab if open
+const _origSaveCallLog = saveCallLog;
+
+// ── CLIENTS ──
+let allClientsLoaded = false;
+let allClientsRaw = []; // raw from API
+
+async function loadAllClients() {
+  const btn = document.getElementById('btn-load-clients');
+  const prog = document.getElementById('cl-progress');
+  const progBar = document.getElementById('cl-progress-bar');
+  const progLabel = document.getElementById('cl-progress-label');
+
+  btn.disabled = true;
+  btn.textContent = 'Загрузка...';
+  prog.style.display = 'block';
+
+  allClientsRaw = [];
+  let offset = 0;
+  const limit = 200;
+  let total = null;
+
+  try {
+    while (true) {
+      const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Clients/?limit=${limit}&offset=${offset}`);
+      const items = Array.isArray(data) ? data : (data.items || []);
+      if (!items.length) break;
+
+      allClientsRaw.push(...items);
+      offset += items.length;
+
+      if (total === null && data.count) total = data.count;
+      const pct = total ? Math.min(Math.round(offset/total*100), 99) : Math.min(offset/70, 99);
+      progBar.style.width = pct + '%';
+      progLabel.textContent = `Загружено ${offset.toLocaleString('ru')}${total ? ' из ' + total.toLocaleString('ru') : ''} клиентов...`;
+
+      if (items.length < limit) break;
+      await new Promise(r => setTimeout(r, 50)); // небольшая пауза
+    }
+
+    progBar.style.width = '100%';
+    progLabel.textContent = `✓ Загружено ${allClientsRaw.length.toLocaleString('ru')} клиентов`;
+    allClientsLoaded = true;
+
+    // Merge with journal data
+    buildClientsFromAPI();
+    filterClients();
+
+    btn.textContent = '↻ Обновить';
+    btn.disabled = false;
+    setTimeout(() => { prog.style.display = 'none'; }, 2000);
+
+  } catch(e) {
+    progLabel.textContent = 'Ошибка: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '⬇ Загрузить всех клиентов';
+  }
+}
+
+function buildClientsFromAPI() {
+  // Start with journal data for visit history
+  const journalMap = {};
+  clientsData.forEach(c => { journalMap[c.id] = c; });
+
+  // Merge API clients
+  const merged = allClientsRaw.map(c => {
+    const existing = journalMap[c.id];
+    return {
+      id: c.id,
+      name: c.name || '—',
+      phone: c.phone || '',
+      visits: existing ? existing.visits : [],
+      employees: existing ? existing.employees : new Set(),
+      totalRevenue: existing ? existing.totalRevenue : 0,
+      lastVisit: existing ? existing.lastVisit : '',
+      created: c.created || ''
+    };
+  });
+
+  // Also add journal clients not in API list (edge case)
+  const apiIds = new Set(allClientsRaw.map(c => c.id));
+  clientsData.forEach(c => { if (!apiIds.has(c.id)) merged.push(c); });
+
+  clientsData = merged.sort((a,b) => b.visits.length - a.visits.length);
+}
+
+let clientsData = []; // built from all[]
+let clientsFiltered = [];
+let clientsPage = 1;
+const CLIENTS_PAGE = 50;
+
+function buildClientsData() {
+  const map = {};
+  all.forEach(a => {
+    const cid = a.client_id;
+    if (!cid) return;
+    if (!map[cid]) map[cid] = {
+      id: cid,
+      name: a.client_name || '—',
+      phone: a.client_phone || '',
+      visits: [],
+      employees: new Set(),
+      totalRevenue: 0,
+      lastVisit: ''
+    };
+    const c = map[cid];
+    c.visits.push(a);
+    if (a._empName) c.employees.add(a._empName);
+    if (a.status === 'finished') c.totalRevenue += parseFloat(a.price || 0);
+    const dt = (a.start_datetime || '').slice(0,10);
+    if (dt > c.lastVisit) c.lastVisit = dt;
+  });
+  return Object.values(map).sort((a,b) => b.visits.length - a.visits.length);
+}
+
+function initClientsTab() {
+  if (!all.length) return;
+
+  // Fill emp filter
+  const empSel = document.getElementById('cl-emp');
+  if (empSel.options.length === 1) {
+    Object.values(employeeMap).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      empSel.appendChild(opt);
+    });
+  }
+
+  clientsData = buildClientsData();
+  clientsFiltered = [...clientsData];
+  clientsPage = 1;
+  renderClientsTable();
+}
+
+function filterClients() {
+  const search = (document.getElementById('cl-search').value || '').toLowerCase();
+  const emp = document.getElementById('cl-emp').value;
+  const minV = parseInt(document.getElementById('cl-min-visits').value) || 0;
+  const maxV = parseInt(document.getElementById('cl-max-visits').value) || Infinity;
+  const from = document.getElementById('cl-from').value;
+  const to = document.getElementById('cl-to').value;
+
+  clientsFiltered = clientsData.filter(c => {
+    if (search && !c.name.toLowerCase().includes(search) && !c.phone.includes(search)) return false;
+    if (emp && !c.employees.has(emp)) return false;
+    if (c.visits.length < minV || c.visits.length > maxV) return false;
+    if (from && c.lastVisit < from) return false;
+    if (to && c.lastVisit > to) return false;
+    return true;
+  });
+  clientsPage = 1;
+  renderClientsTable();
+}
+
+function resetClientFilters() {
+  ['cl-search','cl-from','cl-to'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cl-emp').value = '';
+  document.getElementById('cl-min-visits').value = '';
+  document.getElementById('cl-max-visits').value = '';
+  filterClients();
+}
+
+function renderClientsTable() {
+  const body = document.getElementById('clients-body');
+  const total = clientsFiltered.length;
+  document.getElementById('cl-stats').textContent = `${total.toLocaleString('ru')} клиентов`;
+
+  if (!total) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Клиенты не найдены</div>';
+    return;
+  }
+
+  const start = (clientsPage - 1) * CLIENTS_PAGE;
+  const rows = clientsFiltered.slice(start, start + CLIENTS_PAGE);
+  const totalPages = Math.ceil(total / CLIENTS_PAGE);
+  const COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa','#f06292','#ff8a65'];
+
+  body.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+      <thead>
+        <tr>
+          <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Клиент</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Телефон</th>
+          <th style="padding:8px 12px;text-align:center;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Визитов</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Врачи</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Последний визит</th>
+          <th style="padding:8px 12px;text-align:right;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Выручка</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((c, i) => {
+          const color = COLORS[(start+i) % COLORS.length];
+          const initials = c.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+          const emps = [...c.employees].slice(0,2).map(e => e.split(' ')[0]).join(', ');
+          const lastDt = c.lastVisit ? c.lastVisit.split('-').reverse().join('.') : '—';
+          const fin = c.visits.filter(v=>v.status==='finished').length;
+          const canc = c.visits.filter(v=>v.status==='cancelled'||v.status==='missed').length;
+          return `<tr style="border-bottom:1px solid #1a1f2e;cursor:pointer" onclick="showClientHistory(${c.id})"
+            onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+            <td style="padding:10px 12px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:32px;height:32px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${initials}</div>
+                <div>
+                  <div style="font-weight:600;color:var(--accent);display:flex;align-items:center">${esc(c.name)}${notesBadge(c.id)}</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone||'—')}</td>
+            <td style="padding:10px 12px;text-align:center">
+              <span style="background:var(--surface2);border-radius:20px;padding:2px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600">${c.visits.length}</span>
+              ${fin>0?`<div style="font-size:10px;color:var(--success);margin-top:2px">${fin} завершено</div>`:''}
+            </td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${esc(emps)}${[...c.employees].length>2?` +${[...c.employees].length-2}`:''}</td>
+            <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${lastDt}</td>
+            <td style="padding:10px 12px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--success)">${c.totalRevenue>0?c.totalRevenue.toLocaleString('ru')+' ₽':'—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    ${totalPages > 1 ? `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px">
+      <button class="pag-btn" onclick="clientsChangePage(-1)" ${clientsPage<=1?'disabled':''}>← Назад</button>
+      <span class="pag-info">Стр. ${clientsPage} из ${totalPages}</span>
+      <button class="pag-btn" onclick="clientsChangePage(1)" ${clientsPage>=totalPages?'disabled':''}>Вперёд →</button>
+    </div>` : ''}
+  `;
+}
+
+function clientsChangePage(d) {
+  clientsPage += d;
+  renderClientsTable();
+  document.getElementById('clients-section').scrollTop = 0;
+}
+
+function showClientHistory(clientId) {
+  const c = clientsData.find(x => x.id === clientId);
+  if (!c) return;
+
+  const STATUS_COLOR = {finished:'var(--success)',cancelled:'var(--danger)',missed:'var(--danger)',confirmed:'var(--accent)',scheduled:'var(--warn)',arrived:'#45d4fa',in_progress:'#7c6af5'};
+  const STATUS_LABEL = {scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+
+  const sorted = c.visits.slice().sort((a,b) => (b.start_datetime||'').localeCompare(a.start_datetime||''));
+
+  const visitsHtml = sorted.map(a => {
+    const dt = (a.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+    const time = (a.start_datetime||'').slice(11,16);
+    const price = parseFloat(a.price||0);
+    const sc = STATUS_COLOR[a.status]||'var(--text2)';
+    const sl = STATUS_LABEL[a.status]||a.status||'—';
+    const svc = (a._svcNames||[]).slice(0,2).join(', ') || a.name || '—';
+    return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+      <div style="min-width:80px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600">${dt}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${time}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(svc)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(a._empName||'—')}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:11px;color:${sc};font-weight:600">${sl}</div>
+        ${price>0?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--success);margin-top:2px">${price.toLocaleString('ru')} ₽</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const fin = c.visits.filter(v=>v.status==='finished').length;
+  const canc = c.visits.filter(v=>v.status==='cancelled'||v.status==='cancelled_by_sms').length;
+  const missed = c.visits.filter(v=>v.status==='missed').length;
+
+  document.getElementById('chm-name').textContent = c.name;
+  document.getElementById('chm-sub').textContent = c.phone || '';
+  document.getElementById('chm-body').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      ${[
+        ['Визитов', c.visits.length, 'var(--text)'],
+        ['Завершено', fin, 'var(--success)'],
+        ['Отменено', canc, canc>0?'var(--danger)':'var(--text2)'],
+        ['Пропущено', missed, missed>0?'var(--warn)':'var(--text2)'],
+        ['Выручка', c.totalRevenue>0?c.totalRevenue.toLocaleString('ru')+' ₽':'—', 'var(--success)'],
+        ['Врачей', [...c.employees].length, 'var(--text)'],
+      ].map(([l,v,col])=>`<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;flex:1;min-width:90px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
+        <div style="font-size:16px;font-weight:700;color:${col};font-family:'JetBrains Mono',monospace">${v}</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">История визитов</div>
+    ${visitsHtml}
+  `;
+
+  document.getElementById('client-history-modal').style.display = 'flex';
+}
+
+function closeClientHistory() {
+  document.getElementById('client-history-modal').style.display = 'none';
+}
+
+// ── BOOKING ──
+let bookingState = { empId: null, date: null, time: null, clientId: null };
+
+function openBooking(empId, date, time) {
+  bookingState = { empId: String(empId), date, time, clientId: null };
+  const empName = employeeMap[empId] || empId;
+
+  // Fill info
+  document.getElementById('bm-info').innerHTML =
+    `<strong>${esc(empName)}</strong> · ${date.split('-').reverse().join('.')} · 🟢 ${time}`;
+
+  // Fill time selects (15-min intervals 07:00–21:00)
+  const times = [];
+  for (let h = 7; h <= 21; h++)
+    for (let m = 0; m < 60; m += 15)
+      times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+
+  const startSel = document.getElementById('bm-start-time');
+  const endSel = document.getElementById('bm-end-time');
+  startSel.innerHTML = times.map(t => `<option value="${t}" ${t===time?'selected':''}>${t}</option>`).join('');
+
+  // Default end = start + 60 min
+  const [sh, sm] = time.split(':').map(Number);
+  const endMin = sh*60 + sm + 60;
+  const defaultEnd = `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
+  endSel.innerHTML = times.map(t => `<option value="${t}" ${t===defaultEnd?'selected':''}>${t}</option>`).join('');
+
+  // Reset client
+  clearSelectedClient();
+  document.getElementById('bm-search').value = '';
+  document.getElementById('bm-search-results').innerHTML = '';
+  document.getElementById('bm-error').style.display = 'none';
+  document.getElementById('bm-success').style.display = 'none';
+
+  document.getElementById('booking-modal').style.display = 'flex';
+}
+
+function toggleNewClient() {
+  const form = document.getElementById('new-client-form');
+  const btn = document.getElementById('btn-new-client');
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  btn.textContent = visible ? '+ Новый клиент' : '× Отмена';
+  if (!visible) {
+    document.getElementById('bm-search').style.display = 'none';
+    document.getElementById('bm-search-results').innerHTML = '';
+  } else {
+    document.getElementById('bm-search').style.display = 'block';
+  }
+}
+
+async function createNewClient() {
+  const first = document.getElementById('nc-first').value.trim();
+  const last  = document.getElementById('nc-last').value.trim();
+  const patron = document.getElementById('nc-patron').value.trim();
+  const phone = document.getElementById('nc-phone').value.trim().replace(/\D/g,'');
+  const errEl = document.getElementById('bm-error');
+  errEl.style.display = 'none';
+
+  if (!first) { errEl.textContent = 'Введите имя клиента'; errEl.style.display = 'block'; return; }
+  if (!phone) { errEl.textContent = 'Введите телефон'; errEl.style.display = 'block'; return; }
+
+  const params = new URLSearchParams({ phone, first_name: first });
+  if (last) params.append('second_name', last);
+  if (patron) params.append('patron_name', patron);
+  const source = document.getElementById('nc-source').value.trim();
+  if (source) params.append('lead_source', source);
+
+  try {
+    const res = await fetch(`https://klientiks.ru/clientix/Restapi/add/a/${ACC}/u/${USR}/m/Clients/`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const text = await res.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(e) {}
+    console.log('Create client response:', text.slice(0,300));
+
+    const clientId = data.id || (data.items && data.items.id) || (data.status === true && data.client_id);
+    if (clientId || data.status === true) {
+      // Try to get the new client id
+      const newId = clientId || (await apiGet(`/list/a/${ACC}/u/${USR}/m/getClientByPhone/phone/${phone}`)).items?.id;
+      const fullName = [last, first, patron].filter(Boolean).join(' ');
+      selectClient(newId, fullName, phone);
+      toggleNewClient();
+      // Clear fields
+      ['nc-first','nc-last','nc-patron','nc-phone','nc-source'].forEach(id => document.getElementById(id).value = '');
+    } else {
+      const errs = data.errors ? Object.values(data.errors).flat().join(', ') : (text.slice(0,150));
+      errEl.textContent = 'Ошибка создания: ' + errs;
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('bm-error').textContent = 'Ошибка: ' + e.message;
+    document.getElementById('bm-error').style.display = 'block';
+  }
+}
+
+function closeBooking() {
+  document.getElementById('booking-modal').style.display = 'none';
+}
+
+let searchTimer = null;
+async function searchClients() {
+  clearTimeout(searchTimer);
+  const q = document.getElementById('bm-search').value.trim();
+  const res = document.getElementById('bm-search-results');
+  if (q.length < 2) { res.innerHTML = ''; return; }
+
+  searchTimer = setTimeout(async () => {
+    res.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px">Поиск...</div>';
+    try {
+      // Телефон или ФИО
+      const isPhone = /^[0-9+\s\-()]{5,}$/.test(q);
+      let clients = [];
+      if (isPhone) {
+        const phone = q.replace(/\D/g,'');
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/getClientByPhone/phone/${phone}`);
+        // API returns {items: {id:..., name:...}} — single object not array
+        const item = data.items || data;
+        clients = item.id ? [item] : (Array.isArray(item) ? item : []);
+      } else {
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Clients/s/searchAPI/name/${encodeURIComponent(q)}`);
+        clients = Array.isArray(data) ? data : (data.items || data.clients || []);
+      }
+      if (!clients.length) {
+        res.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px">Не найдено</div>';
+        return;
+      }
+      res.innerHTML = clients.map(c => {
+        const name = c.name || [c.last_name, c.first_name, c.middle_name].filter(Boolean).join(' ') || '—';
+        const phone = c.phone || c.mobile || '';
+        return `<div onclick="selectClient(${c.id},'${esc(name)}','${esc(phone)}')"
+          style="padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;background:var(--surface2);margin-bottom:4px;border:1px solid var(--border)"
+          onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-weight:600">${esc(name)}</div>
+          ${phone ? `<div style="font-size:11px;color:var(--text2)">${esc(phone)}</div>` : ''}
+        </div>`;
+      }).join('');
+    } catch(e) {
+      res.innerHTML = '<div style="font-size:12px;color:var(--danger);padding:4px">Ошибка поиска</div>';
+    }
+  }, 400);
+}
+
+function selectClient(id, name, phone) {
+  bookingState.clientId = id;
+  document.getElementById('bm-client-name-display').textContent = name;
+  document.getElementById('bm-client-phone-display').textContent = phone || 'Телефон не указан';
+  document.getElementById('bm-selected-client').style.display = 'block';
+  document.getElementById('bm-search-results').innerHTML = '';
+  document.getElementById('bm-search').value = '';
+}
+
+function clearSelectedClient() {
+  bookingState.clientId = null;
+  document.getElementById('bm-selected-client').style.display = 'none';
+}
+
+async function submitBooking() {
+  const btn = document.getElementById('bm-submit');
+  const errEl = document.getElementById('bm-error');
+  const okEl = document.getElementById('bm-success');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  if (!bookingState.clientId) {
+    errEl.textContent = 'Выберите клиента из списка';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const startTime = document.getElementById('bm-start-time').value;
+  const endTime = document.getElementById('bm-end-time').value;
+  const startDt = `${bookingState.date} ${startTime}:00`;
+  const endDt   = `${bookingState.date} ${endTime}:00`;
+
+  btn.disabled = true;
+  btn.textContent = 'Записываем...';
+
+  try {
+    const params = new URLSearchParams({
+      client_id: bookingState.clientId,
+      executor_id: parseInt(bookingState.empId),
+      status: 'scheduled',
+      start_datetime: bookingState.date,
+      start_time: startTime + ':00',
+      finish_datetime: bookingState.date,
+      finish_time: endTime + ':00'
+    });
+    const res = await fetch(`https://klientiks.ru/clientix/Restapi/add/a/${ACC}/u/${USR}/m/Appointments/`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const text = await res.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(e) {}
+    console.log('Booking response:', text.slice(0,300));
+    if (data.id || data.status === true) {
+      okEl.textContent = '✓ Запись успешно создана!';
+      okEl.style.display = 'block';
+      btn.textContent = 'Готово';
+      setTimeout(() => closeBooking(), 1500);
+    } else {
+      const errs = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || data.error || text.slice(0,150));
+      errEl.textContent = 'Ошибка: ' + errs;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Записать';
+    }
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Записать';
+  }
+}
+
+function showTodayCancellations() {
+  const todayStr = fmt(new Date());
+  const list = all.filter(a => {
+    if (a.status !== 'cancelled' && a.status !== 'cancelled_by_sms') return false;
+    const modRaw = a.modified || '';
+    if (!modRaw) return false;
+    const modMsk = new Date(new Date(modRaw.replace(' ','T')+'Z').getTime() + 3*3600*1000);
+    return modMsk.toISOString().slice(0,10) === todayStr;
+  }).sort((a,b) => (b.modified||'').localeCompare(a.modified||''));
+
+  if (!list.length) {
+    document.getElementById('today-cancel-body').innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px">Сегодня отмен не было</div>';
+    document.getElementById('today-cancel-modal').style.display = 'flex';
+    return;
+  }
+
+  const rows = list.map(a => {
+    const apptDate = (a.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+    const apptTime = (a.start_datetime||'').slice(11,16);
+    const modRaw = a.modified || '';
+    const modDate = modRaw ? new Date(modRaw.replace(' ', 'T') + 'Z') : null;
+    const modTime = modDate ? String(modDate.getUTCHours()+3).padStart(2,'0') + ':' + String(modDate.getUTCMinutes()).padStart(2,'0') : '—';
+    const price = parseFloat(a.price||0);
+
+    // Проверяем перезаписался ли клиент
+    const nextAppt = a.client_id ? all.find(x =>
+      x.client_id === a.client_id && x.id !== a.id &&
+      (x.status === 'scheduled' || x.status === 'confirmed') &&
+      (x.start_datetime||'') > (a.start_datetime||'')
+    ) : null;
+
+    const nextHtml = nextAppt
+      ? `<div style="font-size:11px;color:var(--success);margin-top:3px">✓ Перезаписан на ${(nextAppt.start_datetime||'').slice(0,10).split('-').reverse().join('.')} ${(nextAppt.start_datetime||'').slice(11,16)}</div>`
+      : `<div style="font-size:11px;color:var(--danger);margin-top:3px">✗ Не перезаписан</div>`;
+
+    return `<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);align-items:flex-start;cursor:pointer" onclick="showClientCard(${all.indexOf(a)})">
+      <div style="min-width:44px;text-align:center">
+        <div style="font-size:10px;color:var(--muted)">отмена</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--danger)">${modTime}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:4px">${esc(a.client_name||'—')}${notesBadge(a.client_id)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(a._empName||'—')} · ${apptDate} ${apptTime}</div>
+        ${nextHtml}
+      </div>
+      ${price>0?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);flex-shrink:0">${price.toLocaleString('ru')} ₽</div>`:''}
+    </div>`;
+  }).join('');
+
+  const rescheduledCount = list.filter(a => a.client_id && all.some(x =>
+    x.client_id === a.client_id && x.id !== a.id &&
+    (x.status === 'scheduled' || x.status === 'confirmed') &&
+    (x.start_datetime||'') > (a.start_datetime||'')
+  )).length;
+
+  document.getElementById('today-cancel-body').innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">ВСЕГО ОТМЕН</div>
+        <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:'JetBrains Mono',monospace">${list.length}</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">ПЕРЕЗАПИСАЛИСЬ</div>
+        <div style="font-size:18px;font-weight:700;color:var(--success);font-family:'JetBrains Mono',monospace">${rescheduledCount}</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:8px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">НЕ ПЕРЕЗАПИСАЛИСЬ</div>
+        <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:'JetBrains Mono',monospace">${list.length - rescheduledCount}</div>
+      </div>
+    </div>
+    ${rows}
+  `;
+  document.getElementById('today-cancel-modal').style.display = 'flex';
+}
+
+// ── TODAY ──
+let pulsePeriod = 'today';
+
+function setPulsePeriod(period) {
+  pulsePeriod = period;
+  document.querySelectorAll('.pulse-period-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderToday();
+}
+
+function renderToday() {
+  const body = document.getElementById('today-body');
+  const now = new Date();
+  const todayStr = fmt(now);
+
+  // Определяем диапазон дат для выбранного периода
+  let dateFrom, dateTo, periodLabel;
+  if (pulsePeriod === 'today') {
+    dateFrom = dateTo = todayStr;
+    periodLabel = 'Сегодня';
+  } else if (pulsePeriod === 'yesterday') {
+    const y = new Date(now); y.setDate(y.getDate()-1);
+    dateFrom = dateTo = fmt(y);
+    periodLabel = 'Вчера';
+  } else if (pulsePeriod === 'tomorrow') {
+    const t = new Date(now); t.setDate(t.getDate()+1);
+    dateFrom = dateTo = fmt(t);
+    periodLabel = 'Завтра';
+  } else if (pulsePeriod === 'week') {
+    const dow = now.getDay() === 0 ? 6 : now.getDay()-1;
+    const mon = new Date(now); mon.setDate(now.getDate()-dow);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    dateFrom = fmt(mon); dateTo = fmt(sun);
+    periodLabel = `Неделя ${dateFrom.split('-').reverse().join('.')} – ${dateTo.split('-').reverse().join('.')}`;
+  }
+
+  if (!all.length) {
+    body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>';
+    return;
+  }
+
+  const todayAll = all.filter(a => {
+    const dt = (a.start_datetime||'').slice(0,10);
+    return dt >= dateFrom && dt <= dateTo;
+  });
+
+  if (!todayAll.length) {
+    body.innerHTML = `<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:40px;margin-bottom:12px">🗓️</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:6px">Записей нет</div>
+      <div style="font-size:13px;color:var(--muted)">Убедитесь что период в журнале включает выбранные даты</div>
+    </div>`;
+    return;
+  }
+
+  const finished   = todayAll.filter(a => a.status === 'finished');
+  const cancelled  = todayAll.filter(a => a.status === 'cancelled' || a.status === 'cancelled_by_sms');
+  // Отмены которые фактически произошли сегодня (по полю modified)
+  const cancelledToday_actual = pulsePeriod === 'today' ? all.filter(a => {
+    if (a.status !== 'cancelled' && a.status !== 'cancelled_by_sms') return false;
+    const modRaw = a.modified || '';
+    if (!modRaw) return false;
+    const modMsk = new Date(new Date(modRaw.replace(' ','T')+'Z').getTime() + 3*3600*1000);
+    const modDate = modMsk.toISOString().slice(0,10);
+    return modDate === todayStr;
+  }) : [];
+  const missed     = todayAll.filter(a => a.status === 'missed');
+  const upcoming   = todayAll.filter(a => a.status === 'scheduled' || a.status === 'confirmed');
+  const inProgress = todayAll.filter(a => a.status === 'in_progress' || a.status === 'arrived');
+  const revenue    = finished.reduce((s,a) => s + parseFloat(a.price||0), 0);
+  const uniqueClients = new Set(todayAll.map(a => a.client_id)).size;
+
+  // Первичные/вторичные — по всей загруженной истории
+  const todayClientIds = new Set(todayAll.map(a => a.client_id).filter(Boolean));
+  let primary = 0, secondary = 0;
+  todayClientIds.forEach(cid => {
+    const allVisits = all.filter(a => a.client_id === cid);
+    const firstVisitDate = allVisits.map(a => (a.start_datetime||'').slice(0,10)).sort()[0];
+    if (firstVisitDate === todayStr) primary++;
+    else secondary++;
+  });
+
+  // Замещение окна — отмена и новая запись в тот же день в то же время
+  const cancelledToday = cancelled.filter(a => (a.start_datetime||'').slice(0,10) === todayStr);
+  let replacedSlots = 0;
+  cancelledToday.forEach(c => {
+    const cTime = (c.start_datetime||'').slice(11,16);
+    const cEmp = String(c.executor_id||'');
+    const replaced = todayAll.some(a =>
+      a.id !== c.id &&
+      a.status !== 'cancelled' && a.status !== 'cancelled_by_sms' && a.status !== 'missed' &&
+      String(a.executor_id||'') === cEmp &&
+      (a.start_datetime||'').slice(11,16) === cTime
+    );
+    if (replaced) replacedSlots++;
+  });
+
+  // Перезапись — клиент отменил и записался на другую дату в загруженном периоде
+  let rescheduled = 0;
+  cancelledToday.forEach(c => {
+    if (!c.client_id) return;
+    const hasNewAppt = all.some(a =>
+      a.client_id === c.client_id &&
+      a.id !== c.id &&
+      (a.status === 'scheduled' || a.status === 'confirmed') &&
+      (a.start_datetime||'').slice(0,10) > todayStr
+    );
+    if (hasNewAppt) rescheduled++;
+  });
+
+  // Current time for timeline
+  const nowMin = now.getHours()*60 + now.getMinutes();
+
+  // Top stats
+  const statCard = (icon, label, value, color='var(--text)', hint='') =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1;min-width:130px">
+      <div style="font-size:22px;margin-bottom:6px">${icon}</div>
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${label}</div>
+      <div style="font-size:22px;font-weight:700;color:${color};font-family:'JetBrains Mono',monospace">${value}</div>
+      ${hint ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${hint}</div>` : ''}
+    </div>`;
+
+  const statsHtml = `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+    ${statCard('👥', 'Пациентов', uniqueClients)}
+    ${statCard('🆕', 'Первичных', primary, 'var(--accent)', `${secondary} повторных`)}
+    ${statCard('✅', 'Завершено', finished.length, 'var(--success)')}
+    ${statCard('⏳', 'Предстоит', upcoming.length + inProgress.length, 'var(--accent)')}
+    ${statCard('❌', 'Отменено', cancelled.length, 'var(--danger)', rescheduled > 0 ? `${rescheduled} перезаписались` : '')}
+    ${pulsePeriod === 'today' ? statCard('🚨', 'Отменили сегодня', `<span style="cursor:pointer;text-decoration:underline" onclick="showTodayCancellations()">${cancelledToday_actual.length}</span>`, cancelledToday_actual.length > 0 ? 'var(--danger)' : 'var(--text)', 'нажмите для деталей') : ''}
+    ${statCard('🔄', 'Замещено окон', replacedSlots, replacedSlots > 0 ? 'var(--success)' : 'var(--text)')}
+    ${statCard('💰', 'Выручка', revenue.toLocaleString('ru') + ' ₽', 'var(--success)')}
+  </div>`;
+
+  // By employee
+  const empToday = {};
+  todayAll.forEach(a => {
+    const name = a._empName || '—';
+    if (!empToday[name]) empToday[name] = { appts: [], revenue: 0, empId: String(a.executor_id||'') };
+    empToday[name].appts.push(a);
+    if (a.status === 'finished') empToday[name].revenue += parseFloat(a.price||0);
+  });
+
+  const COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa','#f06292','#ff8a65'];
+  const STATUS_COLOR = {finished:'var(--success)',cancelled:'var(--danger)',missed:'var(--danger)',confirmed:'var(--accent)',scheduled:'var(--warn)',arrived:'#45d4fa',in_progress:'#7c6af5'};
+  const STATUS_LABEL = {scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+
+  const empsHtml = Object.entries(empToday)
+    .sort((a,b) => b[1].appts.length - a[1].appts.length)
+    .map(([name, data], idx) => {
+      const color = COLORS[idx % COLORS.length];
+      const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+      const fin = data.appts.filter(a=>a.status==='finished').length;
+      const canc = data.appts.filter(a=>a.status==='cancelled'||a.status==='cancelled_by_sms').length;
+      const wait = data.appts.filter(a=>a.status==='scheduled'||a.status==='confirmed'||a.status==='arrived'||a.status==='in_progress').length;
+
+      const apptRows = data.appts
+        .slice().sort((a,b)=>(a.start_datetime||'').localeCompare(b.start_datetime||''))
+        .map(a => {
+          const t = (a.start_datetime||'').slice(11,16);
+          const t2 = (a.finish_datetime||'').slice(11,16);
+          const sc = STATUS_COLOR[a.status]||'var(--text2)';
+          const sl = STATUS_LABEL[a.status]||a.status||'—';
+          const price = parseFloat(a.price||0);
+          const svc = (a._svcNames||[]).slice(0,1).join('') || a.name || '—';
+          // Is this appointment current?
+          const startMin = parseInt(t.split(':')[0]||0)*60 + parseInt(t.split(':')[1]||0);
+          const endMin = parseInt((t2||'').split(':')[0]||0)*60 + parseInt((t2||'').split(':')[1]||0);
+          const isCurrent = nowMin >= startMin && nowMin <= endMin && t2;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:4px;background:${isCurrent?color+'18':'var(--surface2)'};${isCurrent?'border:1px solid '+color+'44':''}" onclick="showClientCard(${all.indexOf(a)})" style="cursor:pointer">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${sc};font-weight:600;min-width:50px">${t}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.client_name||'—')}</div>
+              <div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(svc)}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:11px;color:${sc}">${sl}</div>
+              ${price>0?`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--success)">${price.toLocaleString('ru')} ₽</div>`:''}
+            </div>
+          </div>`;
+        }).join('');
+
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border)">
+          <div style="width:36px;height:36px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${initials}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">${esc(name)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${data.appts.length} записей · ${fin} завершено · ${canc} отменено</div>
+          </div>
+          <div style="text-align:right">
+            ${data.revenue>0?`<div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--success)">${data.revenue.toLocaleString('ru')} ₽</div>`:''}
+            ${wait>0?`<div style="font-size:11px;color:var(--accent)">${wait} предстоит</div>`:''}
+          </div>
+        </div>
+        <div style="padding:10px 12px">${apptRows}</div>
+      </div>`;
+    }).join('');
+
+  const dateLabel = pulsePeriod === 'today' ? new Date().toLocaleDateString('ru', {weekday:'long', day:'numeric', month:'long'}) : periodLabel;
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:20px;font-weight:700;text-transform:capitalize">${dateLabel}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">${todayAll.length} записей · ${Object.keys(empToday).length} сотрудников</div>
+      </div>
+      <button onclick="renderToday()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+    </div>
+    ${statsHtml}
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">По сотрудникам</div>
+    ${empsHtml}
+  `;
+}
+
+
+// ── CALL LOG ──
+let callLogVisitIdx = null;
+const CALL_STATUSES = [
+  {key:'pending',    label:'📞 Не звонили',   color:'var(--muted)'},
+  {key:'no_answer',  label:'📵 Не дозвонились', color:'var(--warn)'},
+  {key:'callback',   label:'🔁 Перезвонит',   color:'var(--accent)'},
+  {key:'booked',     label:'✅ Записан',       color:'var(--success)'},
+  {key:'refused',    label:'❌ Отказался',     color:'var(--danger)'},
+];
+
+async function loadCallLog() {
+  try {
+    const data = await sbGet('call_log', 'select=*');
+    callLogMap = {};
+    data.forEach(r => { callLogMap[r.visit_id] = r; });
+  } catch(e) { console.log('CallLog load error:', e.message); }
+}
+
+function openCallLog(aIdx) {
+  const a = all[aIdx];
+  if (!a) return;
+  callLogVisitIdx = aIdx;
+  const existing = callLogMap[a.id];
+
+  document.getElementById('cl-title').textContent = a.client_name || '—';
+  document.getElementById('cl-subtitle').textContent =
+    `${(a.start_datetime||'').slice(0,10).split('-').reverse().join('.')} · ${esc(a._empName||'—')}`;
+  document.getElementById('cl-comment').value = existing?.comment || '';
+  document.getElementById('cl-admin').value = existing?.admin_name || localStorage.getItem('klientiks_note_author') || '';
+
+  // Status buttons
+  const curStatus = existing?.status || 'pending';
+  document.getElementById('cl-status-btns').innerHTML = CALL_STATUSES.map(s =>
+    `<button onclick="selectCallStatus('${s.key}')" id="cls-${s.key}" style="padding:6px 12px;border-radius:20px;border:1px solid ${s.color};color:${curStatus===s.key?'#fff':s.color};background:${curStatus===s.key?s.color:'transparent'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">${s.label}</button>`
+  ).join('');
+
+  // Previous entry info
+  const prev = document.getElementById('cl-prev');
+  if (existing?.updated_at) {
+    const dt = new Date(existing.updated_at).toLocaleDateString('ru', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    prev.style.display = 'block';
+    prev.innerHTML = `<span style="color:var(--muted)">Последнее изменение: </span>${dt}${existing.admin_name?' · '+esc(existing.admin_name):''}`;
+  } else {
+    prev.style.display = 'none';
+  }
+
+  document.getElementById('call-modal').style.display = 'flex';
+}
+
+let _callStatus = 'pending';
+function selectCallStatus(key) {
+  _callStatus = key;
+  CALL_STATUSES.forEach(s => {
+    const btn = document.getElementById('cls-'+s.key);
+    if (!btn) return;
+    btn.style.background = key === s.key ? s.color : 'transparent';
+    btn.style.color = key === s.key ? '#fff' : s.color;
+  });
+}
+
+async function saveCallLog() {
+  const a = all[callLogVisitIdx];
+  if (!a) return;
+  const btn = document.getElementById('cl-save-btn');
+  btn.disabled = true; btn.textContent = 'Сохраняем...';
+
+  const admin = document.getElementById('cl-admin').value.trim();
+  if (admin) localStorage.setItem('klientiks_note_author', admin);
+
+  try {
+    const payload = {
+      visit_id: a.id,
+      client_id: a.client_id,
+      client_name: a.client_name || '',
+      client_phone: a.client_phone || '',
+      visit_date: (a.start_datetime||'').slice(0,10),
+      doctor_name: a._empName || '',
+      status: _callStatus,
+      comment: document.getElementById('cl-comment').value.trim(),
+      admin_name: admin || null,
+      updated_at: new Date().toISOString()
+    };
+    const existing = callLogMap[a.id];
+    if (existing?.id) {
+      await fetch(`${SB_URL}/rest/v1/call_log?id=eq.${existing.id}`, {
+        method: 'PATCH',
+        headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      await sbInsert('call_log', payload);
+    }
+    callLogMap[a.id] = {...(callLogMap[a.id]||{}), ...payload};
+    closeCallLog();
+    renderTable(); // refresh badges
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
+}
+
+function closeCallLog() {
+  document.getElementById('call-modal').style.display = 'none';
+}
+
+// ── NOTES ──
+let currentNoteClientId = null;
+let currentNoteClientName = null;
+
+async function loadClientNotes(clientId) {
+  const notes = document.getElementById('cm-notes');
+  notes.innerHTML = '<div style="font-size:12px;color:var(--muted)">Загрузка...</div>';
+  try {
+    const data = await sbGet('client_notes', `client_id=eq.${clientId}&order=created_at.desc`);
+    if (!data.length) {
+      notes.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Заметок пока нет</div>';
+      return;
+    }
+    notes.innerHTML = data.map(n => {
+      const dt = new Date(n.created_at).toLocaleDateString('ru', {day:'numeric',month:'short',year:'numeric'});
+      const tm = new Date(n.created_at).toLocaleTimeString('ru', {hour:'2-digit',minute:'2-digit'});
+      return `<div style="background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:6px;position:relative">
+        <div style="font-size:13px;line-height:1.4">${esc(n.text)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">${n.author ? esc(n.author)+' · ' : ''}${dt} ${tm}</div>
+        <button onclick="deleteNote('${n.id}',${clientId})" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1" title="Удалить">×</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    notes.innerHTML = '<div style="font-size:12px;color:var(--danger)">Ошибка загрузки</div>';
+  }
+}
+
+async function addClientNote() {
+  const text = document.getElementById('cm-note-text').value.trim();
+  const author = document.getElementById('cm-note-author').value.trim();
+  if (!text || !currentNoteClientId) return;
+  const btn = document.querySelector('#client-modal button[onclick="addClientNote()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await sbInsert('client_notes', {
+      client_id: currentNoteClientId,
+      client_name: currentNoteClientName,
+      text,
+      author: author || null
+    });
+    document.getElementById('cm-note-text').value = '';
+    await loadClientNotes(currentNoteClientId);
+    loadNotesIndex(); // обновляем индекс
+  } catch(e) {
+    alert('Ошибка сохранения: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '+'; }
+  }
+}
+
+async function deleteNote(noteId, clientId) {
+  if (!confirm('Удалить заметку?')) return;
+  await sbDelete('client_notes', noteId);
+  await loadClientNotes(clientId);
+  loadNotesIndex();
+}
+
+// ── HELPERS ──
+function showLoading() {
+  document.getElementById('state-box').style.display = 'flex';
+  document.getElementById('state-box').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Загрузка...</div></div>';
+  document.getElementById('main-table').style.display = 'none';
+  document.getElementById('pag').style.display = 'none';
+  document.getElementById('stats-row').style.display = 'none';
+}
+function showEmpty() {
+  document.getElementById('state-box').style.display = 'flex';
+  document.getElementById('state-box').innerHTML = '<div class="state-box"><div class="state-icon">🗓️</div><div class="state-title">Записей не найдено</div><div class="state-desc">Попробуйте изменить период или фильтры</div></div>';
+  document.getElementById('main-table').style.display = 'none';
+  document.getElementById('pag').style.display = 'none';
+}
+function showErr(msg) { const e = document.getElementById('error-msg'); e.textContent = msg; e.style.display = 'block'; }
+function hideErr() { document.getElementById('error-msg').style.display = 'none'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

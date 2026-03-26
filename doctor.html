@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кабинет врача</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2130;--border:#21262d;
+  --text:#e6edf3;--text2:#8b949e;--muted:#484f58;
+  --accent:#4f8ef7;--success:#34c77b;--danger:#f05c5c;--warn:#f5a623;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.light{--bg:#f5f7fa;--surface:#fff;--surface2:#f0f2f5;--border:#e1e4e8;--text:#1a1f2e;--text2:#586069;--muted:#959da5;--accent:#0969da;--success:#1a7f37;--danger:#cf222e;--warn:#9a6700}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:420px;max-width:100%}
+.login-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-card p{color:var(--text2);font-size:13px;margin-bottom:24px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.field select,.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:14px}
+.field select:focus,.field input:focus{outline:none;border-color:var(--accent)}
+.btn-primary{width:100%;background:var(--accent);border:none;border-radius:8px;padding:12px;color:#fff;font-family:'Onest',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+
+/* APP */
+#app{display:none}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.doctor-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.doctor-name{font-weight:600;font-size:14px}
+.header-right{display:flex;align-items:center;gap:8px}
+.btn-sm{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Onest',sans-serif}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab-btn{background:none;border:none;padding:12px 16px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer;border-bottom:2px solid transparent}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+/* TODAY */
+.section{padding:20px}
+.appt-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.appt-card:hover{border-color:var(--accent)}
+.appt-card.current{border-color:var(--accent);background:rgba(79,142,247,0.05)}
+.appt-time{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600}
+.appt-client{font-size:15px;font-weight:600;margin:4px 0 2px}
+.appt-svc{font-size:12px;color:var(--text2)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+
+/* PATIENTS */
+.patient-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.patient-row:hover .patient-name{color:var(--accent)}
+.patient-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.patient-name{font-weight:600;font-size:13px}
+.patient-meta{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* CARD MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:600px;max-width:96vw;max-height:92vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+.card-field{margin-bottom:16px}
+.card-field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.card-field textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;resize:vertical;min-height:80px}
+.card-field textarea:focus{outline:none;border-color:var(--accent)}
+.card-field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px}
+.card-field input:focus{outline:none;border-color:var(--accent)}
+.btn-save{background:var(--accent);border:none;border-radius:8px;padding:10px 24px;color:#fff;font-family:'Onest',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.btn-save:disabled{opacity:.5}
+.visit-history-item{padding:10px 14px;background:var(--surface2);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.visit-history-item:hover{border:1px solid var(--accent)}
+.cal-cell{border-radius:8px;padding:6px 5px;text-align:left;cursor:pointer;min-height:80px;height:auto;border:1px solid var(--border);background:var(--surface);position:relative;transition:border-color .15s;overflow:visible}
+.cal-cell:hover{border-color:var(--accent)}
+.cal-cell.today{border-color:var(--accent);background:rgba(79,142,247,0.06)}
+.cal-cell.selected{border-color:var(--accent);background:rgba(79,142,247,0.12)}
+.cal-cell.weekend{background:rgba(255,255,255,0.01)}
+.cal-cell.empty-cell{border:none;background:none;cursor:default}
+.cal-num{font-size:12px;font-weight:700;margin-bottom:3px}
+.cal-entry{font-size:9px;border-radius:3px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.cal-free-entry{font-size:9px;color:var(--success);opacity:.85}
+.cal-appt-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--surface2);border:1px solid transparent}
+.cal-appt-row:hover{border-color:var(--accent);background:var(--surface)}
+.free-slot{background:rgba(52,199,123,0.12);border:1px solid rgba(52,199,123,0.3);border-radius:6px;padding:3px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--success)}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px;color:var(--text2)}
+.badge-note{display:inline-block;background:var(--accent);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;margin-left:5px}
+.search-box{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;margin-bottom:14px}
+.search-box:focus{outline:none;border-color:var(--accent)}
+.doctor-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.doctor-item:hover{border-color:var(--accent);background:var(--surface2)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <!-- Step 1: credentials -->
+  <div id="step-creds" class="login-card">
+    <h1>🩺 Кабинет врача</h1>
+    <p>Введите данные для подключения к API</p>
+    <div class="field"><label>Аккаунт ID</label><input id="inp-acc" placeholder="abd9e828f349"></div>
+    <div class="field"><label>Пользователь ID</label><input id="inp-usr" placeholder="1fd6a96a61d6"></div>
+    <div class="field"><label>Токен</label><input id="inp-token" type="password" placeholder="Токен авторизации"></div>
+    <div id="creds-error" style="display:none;color:var(--danger);font-size:12px;margin-bottom:10px"></div>
+    <button class="btn-primary" id="btn-next" onclick="goToStep2()">Далее →</button>
+  </div>
+
+  <!-- Step 2: choose doctor -->
+  <div id="step-doctor" class="login-card" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button onclick="goToStep1()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">←</button>
+      <h1 style="margin:0">Выберите врача</h1>
+    </div>
+    <p>Кем вы являетесь?</p>
+    <div id="doctor-list" style="margin-bottom:16px">
+      <div class="empty"><div class="spinner"></div></div>
+    </div>
+    <input type="text" id="doctor-search" placeholder="Поиск врача..." class="search-box" oninput="filterDoctorList()" style="margin-bottom:8px">
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-left">
+      <div class="doctor-avatar" id="hdr-avatar">??</div>
+      <div class="doctor-name" id="hdr-name">Врач</div>
+    </div>
+    <div class="header-right">
+      <button class="btn-sm" onclick="toggleTheme()" id="theme-btn">🌙</button>
+      <button class="btn-sm" onclick="logout()">Выйти</button>
+    </div>
+  </header>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-calendar" onclick="switchTab('calendar')">📅 Календарь</button>
+    <button class="tab-btn" id="tab-patients" onclick="switchTab('patients')">👥 Мои пациенты</button>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="calendar-section" style="padding:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:6px">
+        <button onclick="calMonthShift(-1)" class="btn-sm">←</button>
+        <button onclick="calGoToday()" class="btn-sm" style="border-color:var(--accent);color:var(--accent)">Сегодня</button>
+        <button onclick="calMonthShift(1)" class="btn-sm">→</button>
+      </div>
+      <div id="cal-month-label" style="font-size:15px;font-weight:700"></div>
+    </div>
+    <!-- Month grid -->
+    <div style="padding:12px 16px">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px" id="cal-weekdays"></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px" id="cal-grid"></div>
+    </div>
+    <!-- Day detail -->
+    <div id="cal-day-detail" style="display:none;padding:0 16px 20px"></div>
+  </div>
+
+  <!-- PATIENTS -->
+  <div id="patients-section" class="section" style="display:none">
+    <input type="text" class="search-box" id="pt-search" placeholder="Поиск по имени..." oninput="filterPatients()">
+    <div id="patients-body"><div class="empty">Загрузка...</div></div>
+  </div>
+</div>
+
+<!-- PATIENT POPUP -->
+<div id="patient-popup" style="display:none;position:fixed;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.4)" onclick="event.stopPropagation()">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:14px;font-weight:700" id="pp-name"></div>
+    <button onclick="closePatientPopup()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1">×</button>
+  </div>
+  <div id="pp-body"></div>
+  <button onclick="openVisitCard(window._ppVisitId)" style="width:100%;margin-top:10px;background:var(--accent);border:none;border-radius:7px;padding:8px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Открыть карту приёма</button>
+</div>
+
+<!-- VISIT CARD MODAL -->
+<div class="modal-overlay" id="card-modal" onclick="if(event.target===this)closeCard()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:16px;font-weight:700" id="card-title">Карта приёма</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="card-subtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeCard()">×</button>
+    </div>
+    <div style="padding:20px">
+      <!-- Visit history tabs -->
+      <div id="card-visits-list" style="margin-bottom:16px"></div>
+
+      <div id="card-form">
+        <div class="card-field"><label>Жалобы</label><textarea id="cf-complaints" placeholder="Что беспокоит пациента..."></textarea></div>
+        <div class="card-field"><label>Осмотр / объективно</label><textarea id="cf-examination" placeholder="Результаты осмотра..."></textarea></div>
+        <div class="card-field"><label>Диагноз</label><textarea id="cf-diagnosis" placeholder="Диагноз..."></textarea></div>
+        <div class="card-field"><label>Назначения / лечение</label><textarea id="cf-treatment" placeholder="Назначения, процедуры, препараты..."></textarea></div>
+        <div class="card-field"><label>Следующий визит</label><input id="cf-next-visit" type="text" placeholder="Через 2 недели / дата..."></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+          <button class="btn-save" id="card-save-btn" onclick="saveCard()">Сохранить</button>
+          <span id="card-save-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- Notes section -->
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px">📝 Заметки о пациенте</div>
+        <div id="card-notes"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="card-note-text" type="text" placeholder="Добавить заметку..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px" onkeydown="if(event.key==='Enter')addDoctorNote()">
+          <button onclick="addDoctorNote()" style="background:var(--accent);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://febqgxqfnnwtvmpmyxfw.supabase.co';
+const SB_KEY = 'sb_publishable_Qr9G2kpFo-zm8uFvv4z34w_mWYKuhsS';
+const BASE = location.protocol === 'file:' ? 'https://klientiks.ru/clientix/Restapi' : '/api';
+
+let ACC='', USR='', TOKEN='', DOCTOR_ID='', DOCTOR_NAME='';
+// Always restore from localStorage on any function call
+function getDoctorId(){ if(!DOCTOR_ID){try{const c=JSON.parse(localStorage.getItem('dr_creds')||'{}');DOCTOR_ID=c.did||'';}catch(e){}} return DOCTOR_ID; }
+let allVisits=[], patientsData=[], clientsWithNotes=new Set();
+let currentVisit=null, currentClientId=null;
+
+// ── SUPABASE ──
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Accept':'application/json'}
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function sbUpsert(table, data, conflict) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':`resolution=merge-duplicates,return=representation`},
+    body:JSON.stringify(data)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function sbInsert(table, data) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body:JSON.stringify(data)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function sbDelete(table, id) {
+  await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+}
+
+// ── HELPERS ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmt(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+
+async function apiGet(path, retries=5) {
+  for(let i=0;i<retries;i++){
+    const r=await fetch(BASE+path,{headers:{'Authorization':'Bearer '+TOKEN}});
+    if(r.status===429){await new Promise(res=>setTimeout(res,(i+1)*2000));continue}
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
+  throw new Error('Rate limit exceeded');
+}
+
+// ── THEME ──
+function toggleTheme(){
+  const l=document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent=l?'☀️':'🌙';
+  localStorage.setItem('dr_theme',l?'light':'dark');
+}
+
+// ── LOGIN ──
+let allDoctors = [];
+
+window.onload = async () => {
+  if(localStorage.getItem('dr_theme')==='light'){document.body.classList.add('light');document.getElementById('theme-btn').textContent='☀️';}
+
+  // Try saved doctor session
+  const ds=localStorage.getItem('dr_creds');
+  if(ds){try{const c=JSON.parse(ds);ACC=c.a;USR=c.u;TOKEN=c.t;DOCTOR_ID=c.did;DOCTOR_NAME=c.dn;showApp();return;}catch(e){}}
+
+  // Pre-fill from main app creds
+  const ms=localStorage.getItem('kl_creds');
+  if(ms){try{
+    const c=JSON.parse(ms);
+    document.getElementById('inp-acc').value=c.a;
+    document.getElementById('inp-usr').value=c.u;
+    document.getElementById('inp-token').value=c.t;
+  }catch(e){}}
+};
+
+async function goToStep2() {
+  ACC=document.getElementById('inp-acc').value.trim();
+  USR=document.getElementById('inp-usr').value.trim();
+  TOKEN=document.getElementById('inp-token').value.trim();
+  const errEl=document.getElementById('creds-error');
+  const btn=document.getElementById('btn-next');
+
+  if(!ACC||!USR||!TOKEN){errEl.textContent='Заполните все поля';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  btn.disabled=true;btn.textContent='Проверяем...';
+
+  try{
+    const data=await apiGet('/list/a/'+ACC+'/u/'+USR+'/m/Users/');
+    const raw=Array.isArray(data)?data:(data.items||data.users||[]);
+    allDoctors=raw.map(e=>({
+      id:e.id,
+      name:[e.last_name,e.first_name,e.middle_name].filter(Boolean).join(' ')||e.name||String(e.id),
+      fired:e.fired
+    })).filter(e=>!e.fired);
+    document.getElementById('step-creds').style.display='none';
+    document.getElementById('step-doctor').style.display='block';
+    renderDoctorList(allDoctors);
+  }catch(e){
+    errEl.textContent='Ошибка подключения: '+e.message;
+    errEl.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='Далее →';}
+}
+
+function goToStep1(){
+  document.getElementById('step-doctor').style.display='none';
+  document.getElementById('step-creds').style.display='block';
+}
+
+function filterDoctorList(){
+  const q=document.getElementById('doctor-search').value.toLowerCase();
+  renderDoctorList(q?allDoctors.filter(e=>e.name.toLowerCase().includes(q)):allDoctors);
+}
+
+function renderDoctorList(list){
+  const el=document.getElementById('doctor-list');
+  const COLORS=['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa'];
+  el.innerHTML=list.map((e,i)=>{
+    const color=COLORS[i%COLORS.length];
+    const initials=e.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    return `<div class="doctor-item" onclick="selectDoctor(${e.id},'${e.name.replace(/'/g,"\'")}')">
+      <div style="width:38px;height:38px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${initials}</div>
+      <div style="font-size:14px;font-weight:600">${esc(e.name)}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectDoctor(id, name){
+  DOCTOR_ID=String(id);
+  DOCTOR_NAME=name;
+  localStorage.setItem('dr_creds',JSON.stringify({a:ACC,u:USR,t:TOKEN,did:DOCTOR_ID,dn:DOCTOR_NAME}));
+  showApp();
+}
+
+
+
+function logout(){
+  localStorage.removeItem('dr_creds');
+  location.reload();
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const initials=DOCTOR_NAME.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+  document.getElementById('hdr-avatar').textContent=initials;
+  document.getElementById('hdr-avatar').style.cssText+=';background:#4f8ef722;color:#4f8ef7';
+  document.getElementById('hdr-name').textContent=DOCTOR_NAME;
+  loadNotesIndex();
+  initCalendar();
+}
+
+// ── TABS ──
+function switchTab(tab){
+  ['calendar','patients'].forEach(t=>{
+    document.getElementById(t+'-section').style.display=t===tab?'block':'none';
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='patients') loadPatients();
+}
+
+// ── NOTES INDEX ──
+async function loadNotesIndex(){
+  try{
+    const data=await sbGet('client_notes','select=client_id');
+    clientsWithNotes=new Set(data.map(n=>n.client_id));
+  }catch(e){}
+}
+
+// ── CALENDAR ──
+let calMonth = null;
+let calVisits = [];
+let calFreeSlots = {};
+let calSelectedDate = null;
+
+function fmt(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`}
+
+function initCalendar(){
+  calMonth=new Date(); calMonth.setDate(1);
+  loadCalendarMonth();
+}
+
+function calGoToday(){
+  calMonth=new Date(); calMonth.setDate(1);
+  loadCalendarMonth();
+}
+
+function calMonthShift(d){
+  calMonth.setMonth(calMonth.getMonth()+d);
+  loadCalendarMonth();
+}
+
+async function loadCalendarMonth(){
+  const MONTHS_RU=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const year=calMonth.getFullYear(), month=calMonth.getMonth();
+  document.getElementById('cal-month-label').textContent=`${MONTHS_RU[month]} ${year}`;
+
+  // Render empty grid while loading
+  renderGrid(year, month, {}, {});
+
+  const fromStr=`${year}-${String(month+1).padStart(2,'0')}-01`;
+  const lastDay=new Date(year,month+1,0).getDate();
+  const toStr=`${year}-${String(month+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const tsFrom=Math.floor(new Date(fromStr+'T00:00:00').getTime()/1000);
+  const tsTo=Math.floor(new Date(toStr+'T23:59:59').getTime()/1000);
+
+  try{
+    let visits=[], offset=0;
+    while(true){
+      const data=await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${tsFrom}&date_till=${tsTo}&filter=start_datetime&limit=100&status=scheduled,confirmed,arrived,in_progress,finished,cancelled,missed&executor_id=${getDoctorId()}&offset=${offset}`);
+      const items=Array.isArray(data)?data:(data.orders||data.items||[]);
+      if(!items.length) break;
+      visits.push(...items);
+      offset+=100;
+      if(items.length<100) break;
+      await new Promise(r=>setTimeout(r,150));
+    }
+    calVisits=visits.filter(a=>String(a.executor_id||'')=== String(getDoctorId()));
+    allVisits=calVisits;
+
+    // Build visit map by date
+    const visitMap={};
+    calVisits.forEach(a=>{
+      const d=(a.start_datetime||'').slice(0,10);
+      if(!visitMap[d]) visitMap[d]=[];
+      visitMap[d].push(a);
+    });
+
+    // Load free slots
+    calFreeSlots={};
+    try{
+      const freeData=await apiGet(`/list/a/${ACC}/u/${USR}/m/availableTimes?start_day=${fromStr}&finish_day=${toStr}&executor_id=${getDoctorId()}`);
+      // Format: {items: {"2026-04-09": ["2026-04-09 13:00:00", ...]}}
+      const freeItems=freeData.items||{};
+      if(typeof freeItems === 'object' && !Array.isArray(freeItems)){
+        Object.entries(freeItems).forEach(([date, times])=>{
+          calFreeSlots[date]=(times||[]).map(t=>t.slice(11,16));
+        });
+      }
+    }catch(e){ console.log('Free slots error:', e.message); }
+
+    renderGrid(year, month, visitMap, calFreeSlots);
+
+    // Auto-select today if in this month
+    const todayStr=fmt(new Date());
+    if(todayStr>=fromStr && todayStr<=toStr){
+      calSelectedDate=todayStr;
+      showDayDetail(todayStr, visitMap[todayStr]||[], calFreeSlots[todayStr]||[]);
+      document.getElementById('cal-day-detail').style.display='block';
+    }
+
+  }catch(e){
+    document.getElementById('cal-day-detail').innerHTML=`<div class="empty">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function renderGrid(year, month, visitMap, freeMap){
+  const todayStr=fmt(new Date());
+  const STATUS_DOTS={finished:'#34c77b',cancelled:'#f05c5c',missed:'#f05c5c',confirmed:'#4f8ef7',scheduled:'#f5a623',arrived:'#45d4fa',in_progress:'#7c6af5'};
+  const lastDay=new Date(year,month+1,0).getDate();
+  const firstDow=new Date(year,month,1).getDay();
+  const offset=firstDow===0?6:firstDow-1;
+
+  // Weekday headers
+  const wdEl=document.getElementById('cal-weekdays');
+  wdEl.innerHTML=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<div style="font-size:10px;color:var(--muted);text-align:center;padding:2px 0">${d}</div>`).join('');
+
+  const grid=document.getElementById('cal-grid');
+  let cells='';
+
+  for(let i=0;i<offset;i++) cells+=`<div class="cal-cell empty-cell"></div>`;
+
+  for(let d=1;d<=lastDay;d++){
+    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=dateStr===todayStr;
+    const isSel=dateStr===calSelectedDate;
+    const dow=(new Date(year,month,d).getDay()+6)%7;
+    const isWeekend=dow>=5;
+    const dayV=visitMap[dateStr]||[];
+    const freeSlots=freeMap[dateStr]||[];
+    const activeV=dayV.filter(a=>a.status!=='cancelled'&&a.status!=='missed');
+
+    const dots=[...new Set(activeV.map(a=>STATUS_DOTS[a.status]||'#8b949e'))].slice(0,4);
+    if(freeSlots.length>0) dots.push('#34c77b');
+
+    // Build entries for inside the cell
+    const sortedV=activeV.slice().sort((a,b)=>(a.start_datetime||'').localeCompare(b.start_datetime||''));
+    const entriesHtml=sortedV.map(a=>{
+      const t=(a.start_datetime||'').slice(11,16);
+      const sc=STATUS_DOTS[a.status]||'#8b949e';
+      const firstName=(a.client_name||'—').split(' ')[0];
+      return `<div class="cal-entry" style="background:${sc}22;color:${sc}"><span style="opacity:.8">${t}</span> ${firstName}</div>`;
+    }).join('');
+    const freeHtml=freeSlots.slice(0,6).map(t=>`<div class="cal-free-entry">🟢 ${t}</div>`).join('');
+
+    cells+=`<div class="cal-cell${isToday?' today':''}${isSel?' selected':''}${isWeekend?' weekend':''}" onclick="calSelectDay('${dateStr}')">
+      <div class="cal-num" style="${isToday?'color:var(--accent)':''}">${d}</div>
+      ${entriesHtml}${freeHtml}
+    </div>`;
+  }
+
+  grid.innerHTML=cells;
+}
+
+function calSelectDay(dateStr){
+  const detail=document.getElementById('cal-day-detail');
+  // Toggle if same day clicked again
+  if(calSelectedDate===dateStr && detail.style.display!=='none'){
+    detail.style.display='none';
+    calSelectedDate=null;
+    document.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selected'));
+    return;
+  }
+  calSelectedDate=dateStr;
+  document.querySelectorAll('.cal-cell:not(.empty-cell)').forEach(c=>{
+    c.classList.remove('selected');
+    if(c.getAttribute('onclick')===`calSelectDay('${dateStr}')`) c.classList.add('selected');
+  });
+  const dayV=calVisits.filter(a=>(a.start_datetime||'').slice(0,10)===dateStr);
+  const freeSlots=calFreeSlots[dateStr]||[];
+  showDayDetail(dateStr, dayV, freeSlots);
+  detail.style.display='block';
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function showDayDetail(dateStr, dayVisits, freeSlots){
+  const detail=document.getElementById('cal-day-detail');
+  const STATUS_COLOR={finished:'#34c77b',cancelled:'#f05c5c',missed:'#f05c5c',confirmed:'#4f8ef7',scheduled:'#f5a623',arrived:'#45d4fa',in_progress:'#7c6af5'};
+  const STATUS_LABEL={scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+  const MONTHS_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+  const d=new Date(dateStr+'T12:00:00');
+  const label=`${d.getDate()} ${MONTHS_RU[d.getMonth()]} ${d.getFullYear()}`;
+  const active=dayVisits.filter(a=>a.status!=='cancelled'&&a.status!=='missed').sort((a,b)=>(a.start_datetime||'').localeCompare(b.start_datetime||''));
+  const cancelled=dayVisits.filter(a=>a.status==='cancelled'||a.status==='missed');
+
+  if(!active.length && !freeSlots.length && !cancelled.length){
+    detail.innerHTML=`<div style="padding:16px 0;border-top:1px solid var(--border)"><div style="font-size:14px;font-weight:700;margin-bottom:8px">${label}</div><div style="color:var(--muted);font-size:13px">Нет записей</div></div>`;
+    return;
+  }
+
+  const apptHtml=active.map(a=>{
+    const t=(a.start_datetime||'').slice(11,16);
+    const sc=STATUS_COLOR[a.status]||'#8b949e';
+    const sl=STATUS_LABEL[a.status]||a.status;
+    const hasNote=clientsWithNotes.has(a.client_id);
+    const price=parseFloat(a.price||0);
+    // Last visit info
+    const clientVisits=calVisits.filter(x=>x.client_id===a.client_id&&x.status==='finished'&&x.id!==a.id)
+      .sort((x,y)=>(y.start_datetime||'').localeCompare(x.start_datetime||''));
+    const lastVisit=clientVisits[0];
+    const lastInfo=lastVisit?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Прошлый визит: ${(lastVisit.start_datetime||'').slice(0,10).split('-').reverse().join('.')}${parseFloat(lastVisit.price||0)>0?' · '+parseFloat(lastVisit.price).toLocaleString('ru')+' ₽':''}</div>`:'';
+    return `<div class="cal-appt-row" style="flex-direction:column;align-items:flex-start">
+      <div style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer" onclick="showPatientPopup(${a.id},event)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${sc};min-width:40px">${t}</span>
+        <span style="flex:1;font-size:13px;font-weight:600">${esc(a.client_name||'—')}${hasNote?'<span class="badge-note">📝</span>':''}</span>
+        ${a.name?`<span style="font-size:11px;color:var(--text2)">${esc(a.name)}</span>`:''}
+        <span style="font-size:11px;color:${sc};flex-shrink:0">${sl}</span>
+        ${price>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--success);flex-shrink:0">${price.toLocaleString('ru')} ₽</span>`:''}
+        <button onclick="event.stopPropagation();openVisitCard(${a.id})" style="background:var(--accent);border:none;border-radius:5px;padding:2px 8px;color:#fff;font-family:'Onest',sans-serif;font-size:10px;cursor:pointer;flex-shrink:0">Карта</button>
+      </div>
+      ${lastInfo}
+    </div>`;
+  }).join('');
+
+  const freeSlotsHtml=freeSlots.length?`
+    <div style="margin-top:12px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Свободные окна</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${freeSlots.map(t=>`<span class="free-slot">🟢 ${t}</span>`).join('')}</div>
+    </div>`:'';
+
+  const cancelHtml=cancelled.length?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Отменено/пропущено: ${cancelled.length}</div>`:'';
+
+  detail.innerHTML=`
+    <div style="padding:14px 0;border-top:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px">${label}
+        <span style="font-size:12px;color:var(--muted);font-weight:400;margin-left:8px">${active.length} записей</span>
+      </div>
+      ${apptHtml}
+      ${freeSlotsHtml}
+      ${cancelHtml}
+    </div>`;
+}
+
+
+// ── TODAY (kept for openVisitCard compatibility) ──
+async function loadTodayVisits(){
+  const body=document.getElementById('today-body');
+  const todayStr=fmt(new Date());
+  const tsFrom=Math.floor(new Date(todayStr+'T00:00:00').getTime()/1000);
+  const tsTo=Math.floor(new Date(todayStr+'T23:59:59').getTime()/1000);
+  try{
+    const data=await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${tsFrom}&date_till=${tsTo}&filter=start_datetime&limit=100&status=scheduled,confirmed,arrived,in_progress,finished,cancelled,missed&executor_id=${DOCTOR_ID}&offset=0`);
+    allVisits=(Array.isArray(data)?data:(data.orders||data.items||[]));
+    renderToday();
+  }catch(e){body.innerHTML=`<div class="empty">Ошибка загрузки: ${e.message}</div>`;}
+}
+
+function renderToday(){
+  const body=document.getElementById('today-body');
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const STATUS_COLOR={finished:'var(--success)',cancelled:'var(--danger)',missed:'var(--danger)',confirmed:'var(--accent)',scheduled:'var(--warn)',arrived:'#45d4fa',in_progress:'#7c6af5'};
+  const STATUS_LABEL={scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+
+  const sorted=allVisits.slice().sort((a,b)=>(a.start_datetime||'').localeCompare(b.start_datetime||''));
+  if(!sorted.length){body.innerHTML='<div class="empty">На сегодня записей нет</div>';return;}
+
+  const finished=sorted.filter(a=>a.status==='finished').length;
+  const upcoming=sorted.filter(a=>a.status==='scheduled'||a.status==='confirmed').length;
+  const revenue=sorted.filter(a=>a.status==='finished').reduce((s,a)=>s+parseFloat(a.price||0),0);
+
+  body.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      ${[['Всего',sorted.length,'var(--text)'],['Завершено',finished,'var(--success)'],['Предстоит',upcoming,'var(--accent)'],['Выручка',revenue.toLocaleString('ru')+' ₽','var(--success)']].map(([l,v,c])=>`
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex:1;min-width:100px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${l}</div>
+          <div style="font-size:20px;font-weight:700;color:${c};font-family:'JetBrains Mono',monospace">${v}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Расписание · ${new Date().toLocaleDateString('ru',{day:'numeric',month:'long'})}</div>
+    ${sorted.map(a=>{
+      const t=(a.start_datetime||'').slice(11,16);
+      const t2=(a.finish_datetime||'').slice(11,16);
+      const startMin=parseInt(t.split(':')[0]||0)*60+parseInt(t.split(':')[1]||0);
+      const endMin=parseInt((t2||'00:00').split(':')[0]||0)*60+parseInt((t2||'00:00').split(':')[1]||0);
+      const isCurrent=nowMin>=startMin&&nowMin<=endMin&&t2;
+      const sc=STATUS_COLOR[a.status]||'var(--text2)';
+      const sl=STATUS_LABEL[a.status]||a.status||'—';
+      const hasNote=clientsWithNotes.has(a.client_id);
+      const price=parseFloat(a.price||0);
+      return `<div class="appt-card ${isCurrent?'current':''}" onclick="openVisitCard(${a.id})">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div>
+              <span class="appt-time">${t}</span>
+              ${t2?`<span style="color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace"> – ${t2}</span>`:''}
+            </div>
+            <span style="font-size:11px;color:${sc};background:${sc}22;padding:2px 8px;border-radius:10px">${sl}</span>
+            ${isCurrent?'<span style="font-size:11px;color:var(--accent);font-weight:600">● Сейчас</span>':''}
+          </div>
+          ${price>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--success)">${price.toLocaleString('ru')} ₽</span>`:''}
+        </div>
+        <div class="appt-client">${esc(a.client_name||'—')}${hasNote?'<span class="badge-note">📝</span>':''}</div>
+        ${a.name?`<div class="appt-svc">${esc(a.name)}</div>`:''}
+      </div>`;
+    }).join('')}
+    <button onclick="loadTodayVisits()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+  `;
+}
+
+// ── PATIENTS ──
+async function loadPatients(){
+  const body=document.getElementById('patients-body');
+  body.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    // Load last 6 months
+    const to=new Date();
+    const from=new Date();from.setMonth(from.getMonth()-6);
+    const tsFrom=Math.floor(from.getTime()/1000);
+    const tsTo=Math.floor(to.getTime()/1000);
+
+    let visits=[];
+    let offset=0;
+    while(true){
+      const data=await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${tsFrom}&date_till=${tsTo}&filter=start_datetime&limit=100&executor_id=${DOCTOR_ID}&offset=${offset}`);
+      const items=Array.isArray(data)?data:(data.orders||data.items||[]);
+      if(!items.length) break;
+      visits.push(...items);
+      offset+=100;
+      if(items.length<100) break;
+      await new Promise(r=>setTimeout(r,150));
+    }
+
+    // Build patient map
+    const map={};
+    visits.filter(a=>String(a.executor_id||'')=== String(DOCTOR_ID)).forEach(a=>{
+      if(!a.client_id) return;
+      if(!map[a.client_id]) map[a.client_id]={id:a.client_id,name:a.client_name||'—',visits:[],lastVisit:''};
+      map[a.client_id].visits.push(a);
+      const dt=(a.start_datetime||'').slice(0,10);
+      if(dt>map[a.client_id].lastVisit) map[a.client_id].lastVisit=dt;
+    });
+
+    patientsData=Object.values(map).sort((a,b)=>b.lastVisit.localeCompare(a.lastVisit));
+    renderPatients(patientsData);
+  }catch(e){body.innerHTML=`<div class="empty">Ошибка: ${e.message}</div>`;}
+}
+
+function filterPatients(){
+  const q=document.getElementById('pt-search').value.toLowerCase();
+  renderPatients(q?patientsData.filter(p=>p.name.toLowerCase().includes(q)):patientsData);
+}
+
+function renderPatients(list){
+  const body=document.getElementById('patients-body');
+  const COLORS=['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c','#45d4fa'];
+  if(!list.length){body.innerHTML='<div class="empty">Пациентов не найдено</div>';return;}
+  body.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${list.length} пациентов за последние 6 месяцев</div>`+
+    list.map((p,i)=>{
+      const color=COLORS[i%COLORS.length];
+      const initials=p.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+      const lastDt=p.lastVisit?p.lastVisit.split('-').reverse().join('.'):'—';
+      const fin=p.visits.filter(v=>v.status==='finished').length;
+      const hasNote=clientsWithNotes.has(p.id);
+      return `<div class="patient-row" onclick="openClientHistory(${p.id})">
+        <div class="patient-avatar" style="background:${color}22;color:${color}">${initials}</div>
+        <div style="flex:1">
+          <div class="patient-name">${esc(p.name)}${hasNote?'<span class="badge-note">📝</span>':''}</div>
+          <div class="patient-meta">${p.visits.length} визитов · ${fin} завершено · последний ${lastDt}</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">›</div>
+      </div>`;
+    }).join('');
+}
+
+// ── VISIT CARD ──
+async function openVisitCard(visitId){
+  const visit=allVisits.find(a=>a.id===visitId);
+  if(!visit) return;
+  currentVisit=visit;
+  currentClientId=visit.client_id;
+
+  document.getElementById('card-title').textContent=esc(visit.client_name||'—');
+  document.getElementById('card-subtitle').textContent=
+    `${(visit.start_datetime||'').slice(0,10).split('-').reverse().join('.')} · ${(visit.start_datetime||'').slice(11,16)}`;
+
+  // Load all visits of this client for history
+  const clientVisits=allVisits.filter(a=>a.client_id===visit.client_id).sort((a,b)=>(b.start_datetime||'').localeCompare(a.start_datetime||''));
+  renderVisitHistory(clientVisits, visitId);
+
+  // Load card for this visit
+  await loadVisitCard(visitId);
+  await loadDoctorNotes(visit.client_id);
+
+  document.getElementById('card-modal').classList.add('open');
+}
+
+async function openClientHistory(clientId){
+  currentClientId=clientId;
+  const patient=patientsData.find(p=>p.id===clientId);
+  if(!patient) return;
+
+  currentVisit=null;
+  document.getElementById('card-title').textContent=esc(patient.name);
+  document.getElementById('card-subtitle').textContent=`${patient.visits.length} визитов`;
+  document.getElementById('cf-complaints').value='';
+  document.getElementById('cf-examination').value='';
+  document.getElementById('cf-diagnosis').value='';
+  document.getElementById('cf-treatment').value='';
+  document.getElementById('cf-next-visit').value='';
+
+  const sorted=patient.visits.slice().sort((a,b)=>(b.start_datetime||'').localeCompare(a.start_datetime||''));
+  renderVisitHistory(sorted, null);
+  await loadDoctorNotes(clientId);
+
+  document.getElementById('card-modal').classList.add('open');
+}
+
+function renderVisitHistory(visits, activeId){
+  const el=document.getElementById('card-visits-list');
+  if(!visits.length){el.innerHTML='';return;}
+  const STATUS_LABEL={scheduled:'Запланирован',confirmed:'Подтверждён',arrived:'Пришёл',in_progress:'В процессе',finished:'Завершён',missed:'Пропущен',cancelled:'Отменён'};
+  el.innerHTML=`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Визиты</div>`+
+    visits.map(v=>{
+      const dt=(v.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+      const t=(v.start_datetime||'').slice(11,16);
+      const isActive=v.id===activeId;
+      return `<div class="visit-history-item" style="${isActive?'border:1px solid var(--accent)':''}" onclick="selectVisit(${v.id})">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600">${dt} ${t}</span>
+            ${isActive?'<span style="font-size:11px;color:var(--accent);margin-left:8px">● выбран</span>':''}
+          </div>
+          <span style="font-size:11px;color:var(--text2)">${STATUS_LABEL[v.status]||v.status}</span>
+        </div>
+        ${v.name?`<div style="font-size:11px;color:var(--text2);margin-top:3px">${esc(v.name)}</div>`:''}
+      </div>`;
+    }).join('');
+}
+
+async function selectVisit(visitId){
+  // Find visit in allVisits or patientsData
+  let visit=allVisits.find(a=>a.id===visitId);
+  if(!visit){
+    const p=patientsData.find(p=>p.id===currentClientId);
+    if(p) visit=p.visits.find(v=>v.id===visitId);
+  }
+  if(!visit) return;
+  currentVisit=visit;
+  document.getElementById('card-subtitle').textContent=
+    `${(visit.start_datetime||'').slice(0,10).split('-').reverse().join('.')} · ${(visit.start_datetime||'').slice(11,16)}`;
+
+  // Re-render history with new active
+  const allV=(allVisits.filter(a=>a.client_id===currentClientId).length?
+    allVisits.filter(a=>a.client_id===currentClientId):
+    patientsData.find(p=>p.id===currentClientId)?.visits||[]).sort((a,b)=>(b.start_datetime||'').localeCompare(a.start_datetime||''));
+  renderVisitHistory(allV, visitId);
+  await loadVisitCard(visitId);
+}
+
+async function loadVisitCard(visitId){
+  const status=document.getElementById('card-save-status');
+  status.textContent='Загрузка...';
+  try{
+    const data=await sbGet('visit_cards',`visit_id=eq.${visitId}`);
+    const card=data[0]||{};
+    document.getElementById('cf-complaints').value=card.complaints||'';
+    document.getElementById('cf-examination').value=card.examination||'';
+    document.getElementById('cf-diagnosis').value=card.diagnosis||'';
+    document.getElementById('cf-treatment').value=card.treatment||'';
+    document.getElementById('cf-next-visit').value=card.next_visit||'';
+    status.textContent=card.id?'Карта загружена':'Новая карта';
+    setTimeout(()=>status.textContent='',2000);
+  }catch(e){status.textContent='Ошибка загрузки';}
+}
+
+async function saveCard(){
+  if(!currentVisit) return;
+  const btn=document.getElementById('card-save-btn');
+  const status=document.getElementById('card-save-status');
+  btn.disabled=true; btn.textContent='Сохраняем...';
+  try{
+    await sbUpsert('visit_cards',{
+      visit_id:currentVisit.id,
+      client_id:currentVisit.client_id,
+      client_name:currentVisit.client_name||'',
+      doctor_name:DOCTOR_NAME,
+      visit_date:(currentVisit.start_datetime||'').slice(0,10),
+      complaints:document.getElementById('cf-complaints').value,
+      examination:document.getElementById('cf-examination').value,
+      diagnosis:document.getElementById('cf-diagnosis').value,
+      treatment:document.getElementById('cf-treatment').value,
+      next_visit:document.getElementById('cf-next-visit').value,
+      updated_at:new Date().toISOString()
+    });
+    status.textContent='✓ Сохранено';
+    setTimeout(()=>status.textContent='',3000);
+  }catch(e){status.textContent='Ошибка: '+e.message;}
+  finally{btn.disabled=false;btn.textContent='Сохранить';}
+}
+
+// ── DOCTOR NOTES ──
+async function loadDoctorNotes(clientId){
+  const el=document.getElementById('card-notes');
+  el.innerHTML='<div style="font-size:12px;color:var(--muted)">Загрузка...</div>';
+  try{
+    const data=await sbGet('client_notes',`client_id=eq.${clientId}&order=created_at.desc`);
+    if(!data.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:4px 0">Заметок нет</div>';return;}
+    el.innerHTML=data.map(n=>{
+      const dt=new Date(n.created_at).toLocaleDateString('ru',{day:'numeric',month:'short'});
+      const tm=new Date(n.created_at).toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+      return `<div style="background:var(--surface2);border-radius:8px;padding:8px 12px;margin-bottom:6px;position:relative">
+        <div style="font-size:13px;line-height:1.4">${esc(n.text)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">${n.author?esc(n.author)+' · ':''}${dt} ${tm}</div>
+        <button onclick="deleteDoctorNote('${n.id}',${clientId})" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">×</button>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--danger)">Ошибка загрузки</div>';}
+}
+
+async function addDoctorNote(){
+  const text=document.getElementById('card-note-text').value.trim();
+  if(!text||!currentClientId) return;
+  try{
+    await sbInsert('client_notes',{client_id:currentClientId,client_name:currentVisit?.client_name||'',text,author:DOCTOR_NAME});
+    document.getElementById('card-note-text').value='';
+    await loadDoctorNotes(currentClientId);
+    loadNotesIndex();
+  }catch(e){alert('Ошибка: '+e.message);}
+}
+
+async function deleteDoctorNote(id, clientId){
+  if(!confirm('Удалить?')) return;
+  await sbDelete('client_notes',id);
+  await loadDoctorNotes(clientId);
+  loadNotesIndex();
+}
+
+function closeCard(){
+  document.getElementById('card-modal').classList.remove('open');
+}
+</script>
+</body>
+</html>
