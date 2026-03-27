@@ -470,6 +470,13 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
           </div>
         </div>
 
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Услуги <span style="color:var(--muted);font-weight:400">(опционально)</span></label>
+          <input type="text" id="bm-svc-search" placeholder="Поиск услуги..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px" oninput="filterBookingServices()">
+          <div id="bm-svc-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none"></div>
+          <div id="bm-svc-selected" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+        </div>
+
         <div id="bm-error" style="display:none;background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--danger)"></div>
         <div id="bm-success" style="display:none;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--success)"></div>
 
@@ -532,6 +539,18 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
         <button onclick="closeClientCard()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
       </div>
       <div id="cm-body" style="padding:20px"></div>
+      <div style="border-top:1px solid var(--border);padding:16px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600">💊 Услуги визита</div>
+          <button onclick="toggleAddService()" id="btn-add-svc" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--accent);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">+ Добавить</button>
+        </div>
+        <div id="cm-services-list" style="margin-bottom:8px"></div>
+        <div id="cm-add-service" style="display:none">
+          <input type="text" id="cm-svc-search" placeholder="Поиск услуги..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px" oninput="filterCardServices()">
+          <div id="cm-svc-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none"></div>
+        </div>
+      </div>
+
       <div style="border-top:1px solid var(--border);padding:16px 20px">
         <div style="font-size:12px;font-weight:600;margin-bottom:10px">📝 Заметки</div>
         <div id="cm-notes" style="margin-bottom:10px"></div>
@@ -1437,6 +1456,15 @@ function showClientCard(idx) {
   `;
 
   currentNoteClientId = a.client_id;
+  currentCardVisitId = a.appointment_id || a.id;
+  // Load services from appointed_services field
+  let cardSvcs = [];
+  try { cardSvcs = typeof a.appointed_services === 'string' ? JSON.parse(a.appointed_services) : (a.appointed_services || []); } catch(e) {}
+  setTimeout(() => {
+    renderCardServices(cardSvcs.filter(s=>s.name).map(s=>({id:s.id, name:s.name})));
+    document.getElementById('cm-add-service').style.display='none';
+    document.getElementById('btn-add-svc').textContent='+ Добавить';
+  }, 0);
   currentNoteClientName = a.client_name || '—';
   // Save author name from localStorage
   const savedAuthor = localStorage.getItem('klientiks_note_author') || '';
@@ -2412,8 +2440,166 @@ function closeClientHistory() {
 // ── BOOKING ──
 let bookingState = { empId: null, date: null, time: null, clientId: null };
 
+// ── CARD SERVICES ──
+let currentCardVisitId = null;
+
+function toggleAddService() {
+  const el = document.getElementById('cm-add-service');
+  const btn = document.getElementById('btn-add-svc');
+  const visible = el.style.display !== 'none';
+  el.style.display = visible ? 'none' : 'block';
+  btn.textContent = visible ? '+ Добавить' : '× Отмена';
+  if (!visible) {
+    loadServices();
+    document.getElementById('cm-svc-search').value = '';
+    document.getElementById('cm-svc-results').style.display = 'none';
+  }
+}
+
+function filterCardServices() {
+  const q = document.getElementById('cm-svc-search').value.trim().toLowerCase();
+  const res = document.getElementById('cm-svc-results');
+  if (!q) { res.style.display = 'none'; return; }
+
+  const filtered = allServices.filter(s => s.name.toLowerCase().includes(q)).slice(0, 10);
+  if (!filtered.length) { res.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--muted)">Не найдено</div>'; res.style.display = 'block'; return; }
+
+  res.style.display = 'block';
+  res.innerHTML = filtered.map(s =>
+    `<div onclick="addServiceToVisit(${s.id},'${esc(s.name)}')"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${esc(s.name)}</div>
+      ${parseFloat(s.price||0)>0?`<div style="font-size:11px;color:var(--success)">${parseFloat(s.price).toLocaleString('ru')} ₽</div>`:''}
+    </div>`
+  ).join('');
+}
+
+async function addServiceToVisit(serviceId, serviceName) {
+  if (!currentCardVisitId) return;
+  const res = document.getElementById('cm-svc-results');
+  res.style.display = 'none';
+  document.getElementById('cm-svc-search').value = '';
+
+  const params = new URLSearchParams({ id: currentCardVisitId, 'services_ids[]': serviceId });
+  const editBase = BASE.includes('klientiks.ru') ? BASE : BASE.replace('/api', '') + '/api';
+  const response = await fetch(editBase + `/edit/a/${ACC}/u/${USR}/m/Appointments/`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString()
+  });
+  const data = await response.json();
+  if (data.status) {
+    renderCardServices([...document.querySelectorAll('#cm-services-list [data-svc-id]')].map(el => ({
+      id: parseInt(el.dataset.svcId), name: el.dataset.svcName
+    })).concat([{id: serviceId, name: serviceName}]));
+    document.getElementById('cm-add-service').style.display = 'none';
+    document.getElementById('btn-add-svc').textContent = '+ Добавить';
+  } else {
+    alert('Ошибка добавления услуги');
+  }
+}
+
+async function removeServiceFromVisit(serviceId, serviceName) {
+  if (!currentCardVisitId || !confirm('Удалить услугу «'+serviceName+'»?')) return;
+  const params = new URLSearchParams({ id: currentCardVisitId, 'removed_appointed_services[]': serviceId });
+  const editBase2 = BASE.includes('klientiks.ru') ? BASE : BASE.replace('/api', '') + '/api';
+  const response = await fetch(editBase2 + `/edit/a/${ACC}/u/${USR}/m/Appointments/`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString()
+  });
+  const data = await response.json();
+  if (data.status) {
+    const remaining = [...document.querySelectorAll('#cm-services-list [data-svc-id]')]
+      .filter(el => parseInt(el.dataset.svcId) !== serviceId)
+      .map(el => ({id: parseInt(el.dataset.svcId), name: el.dataset.svcName}));
+    renderCardServices(remaining);
+  }
+}
+
+function renderCardServices(svcs) {
+  const el = document.getElementById('cm-services-list');
+  if (!svcs.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Нет услуг</div>'; return; }
+  el.innerHTML = svcs.map(s =>
+    `<div data-svc-id="${s.id}" data-svc-name="${esc(s.name)}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${esc(s.name)}</span>
+      <button onclick="removeServiceFromVisit(${s.id},'${esc(s.name)}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;padding:0 4px">Удалить</button>
+    </div>`
+  ).join('');
+}
+
+// ── BOOKING SERVICES ──
+let allServices = [];
+let selectedServices = []; // [{id, name, price}]
+
+async function loadServices() {
+  if (allServices.length) return;
+  try {
+    let items = [], offset = 0;
+    while(true) {
+      const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=200&offset=${offset}`);
+      const batch = Array.isArray(data) ? data : (data.items || []);
+      if (!batch.length) break;
+      items.push(...batch);
+      offset += 200;
+      if (batch.length < 200) break;
+    }
+    allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name));
+    console.log('Services loaded:', allServices.length);
+  } catch(e) { console.log('Services load error:', e.message); }
+}
+
+function filterBookingServices() {
+  const q = document.getElementById('bm-svc-search').value.trim().toLowerCase();
+  const res = document.getElementById('bm-svc-results');
+  if (!q) { res.style.display = 'none'; return; }
+
+  const filtered = allServices.filter(s =>
+    s.name.toLowerCase().includes(q) && !selectedServices.find(x => x.id === s.id)
+  ).slice(0, 10);
+
+  if (!filtered.length) { res.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--muted)">Не найдено</div>'; res.style.display = 'block'; return; }
+
+  res.style.display = 'block';
+  res.innerHTML = filtered.map(s =>
+    `<div onclick="addBookingService(${s.id},'${esc(s.name)}',${parseFloat(s.price||0)})"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${esc(s.name)}</div>
+      ${parseFloat(s.price||0)>0?`<div style="font-size:11px;color:var(--success)">${parseFloat(s.price).toLocaleString('ru')} ₽</div>`:''}
+    </div>`
+  ).join('');
+}
+
+function addBookingService(id, name, price) {
+  if (selectedServices.find(s => s.id === id)) return;
+  selectedServices.push({id, name, price});
+  document.getElementById('bm-svc-search').value = '';
+  document.getElementById('bm-svc-results').style.display = 'none';
+  renderSelectedServices();
+}
+
+function removeBookingService(id) {
+  selectedServices = selectedServices.filter(s => s.id !== id);
+  renderSelectedServices();
+}
+
+function renderSelectedServices() {
+  const el = document.getElementById('bm-svc-selected');
+  el.innerHTML = selectedServices.map(s =>
+    `<div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px">
+      <span>${esc(s.name)}${s.price>0?' · '+s.price.toLocaleString('ru')+' ₽':''}</span>
+      <button onclick="removeBookingService(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>
+    </div>`
+  ).join('');
+}
+
 function openBooking(empId, date, time) {
   bookingState = { empId: String(empId), date, time, clientId: null };
+  selectedServices = [];
+  renderSelectedServices();
+  loadServices();
   const empName = employeeMap[empId] || empId;
 
   // Fill info
@@ -2600,6 +2786,10 @@ async function submitBooking() {
       finish_datetime: bookingState.date,
       finish_time: endTime + ':00'
     });
+    // Add selected services
+    if (selectedServices.length > 0) {
+      params.append('appointed_services', selectedServices.map(s => s.id).join(','));
+    }
     const res = await fetch(`https://klientiks.ru/clientix/Restapi/add/a/${ACC}/u/${USR}/m/Appointments/`, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
