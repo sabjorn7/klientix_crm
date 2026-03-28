@@ -874,12 +874,21 @@ function applyFilters() {
       } else if (statVal === 'cancelled_not_rescheduled') {
         const isCancelled = a.status === 'cancelled' || a.status === 'cancelled_by_sms';
         if (!isCancelled) return false;
-        const hasRescheduled = a.client_id && all.some(x =>
+        // Check: no future visits AND no visits after this cancellation
+        const hasAnythingAfter = a.client_id && all.some(x =>
           x.client_id === a.client_id && x.id !== a.id &&
-          (x.status === 'scheduled' || x.status === 'confirmed') &&
+          (x.start_datetime||'') > (a.start_datetime||'') &&
+          (x.status === 'scheduled' || x.status === 'confirmed' ||
+           x.status === 'finished' || x.status === 'arrived' || x.status === 'in_progress')
+        );
+        if (hasAnythingAfter) return false;
+        // Also check this is the latest cancellation for this client (no newer cancellations)
+        const isLatestCancel = !all.some(x =>
+          x.client_id === a.client_id && x.id !== a.id &&
+          (x.status === 'cancelled' || x.status === 'cancelled_by_sms') &&
           (x.start_datetime||'') > (a.start_datetime||'')
         );
-        if (hasRescheduled) return false;
+        if (!isLatestCancel) return false;
       } else if (statVal === 'finished_not_rescheduled') {
         if (a.status !== 'finished') return false;
         const hasNext = a.client_id && all.some(x =>
