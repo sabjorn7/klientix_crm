@@ -2529,6 +2529,21 @@ let selectedServices = []; // [{id, name, price}]
 
 async function loadServices() {
   if (allServices.length) return Promise.resolve();
+
+  // Try cache first (valid for 24 hours)
+  try {
+    const cached = localStorage.getItem('kl_services_cache');
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < 24 * 3600 * 1000) {
+        allServices = data;
+        console.log('Services from cache:', allServices.length);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Load from API with slow pace
   try {
     let items = [], offset = 0;
     while(true) {
@@ -2538,10 +2553,14 @@ async function loadServices() {
       items.push(...batch);
       offset += batch.length;
       if (batch.length < 50) break;
-      await new Promise(r => setTimeout(r, 600 + Math.random()*200));
+      await new Promise(r => setTimeout(r, 800));
     }
     allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
     console.log('Services loaded:', allServices.length);
+    // Save to cache
+    try {
+      localStorage.setItem('kl_services_cache', JSON.stringify({ data: allServices, ts: Date.now() }));
+    } catch(e) {}
   } catch(e) { console.log('Services load error:', e.message); }
 }
 
