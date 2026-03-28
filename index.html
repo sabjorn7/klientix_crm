@@ -2468,13 +2468,13 @@ function toggleAddService() {
       loadServices().then(() => {
         if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
       setTimeout(() => {
-        renderGroupCol('cm', 'addServiceToVisit');
+        getAndRenderGroups('cm', 'addServiceToVisit');
         filterCardServices();
       }, 0);
       });
     } else {
       setTimeout(() => {
-        renderGroupCol('cm', 'addServiceToVisit');
+        getAndRenderGroups('cm', 'addServiceToVisit');
         filterCardServices();
       }, 0);
     }
@@ -2482,17 +2482,21 @@ function toggleAddService() {
 }
 
 function filterCardServices() {
-  const q = document.getElementById('cm-svc-search').value.trim().toLowerCase();
+  const q = document.getElementById('cm-svc-search').value.trim();
   const res = document.getElementById('cm-svc-results');
   const group = activeGroupFilter.cm;
-  // Show services if group selected OR search query entered
-  if (!group && q.length < 1) { res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите название</div>'; return; }
-  const filtered = allServices.filter(s => {
-    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
-    return true;
-  }).slice(0, 50);
-  res.innerHTML = svcResultsHtml(filtered, 'addServiceToVisit');
+  if (!group && q.length < 2) {
+    res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите 2+ символа</div>';
+    return;
+  }
+  res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Поиск...</div>';
+  clearTimeout(svcSearchTimer);
+  svcSearchTimer = setTimeout(async () => {
+    const results = await searchServicesApi(q, group);
+    if (document.getElementById('cm-svc-results')) {
+      document.getElementById('cm-svc-results').innerHTML = svcResultsHtml(results, 'addServiceToVisit');
+    }
+  }, 300);
 }
 
 async function addServiceToVisit(serviceId, serviceName) {
@@ -2553,51 +2557,66 @@ function renderCardServices(svcs) {
 let allServices = [];
 let selectedServices = []; // [{id, name, price}]
 
+let servicesLoading = null;
+let svcSearchTimer = null;
+
 async function loadServices() {
-  if (allServices.length) return Promise.resolve();
+  // Services are loaded on demand via search - this is a no-op
+  return Promise.resolve();
+}
 
-  // Try cache first (valid for 24 hours)
+async function searchServicesApi(query, group) {
   try {
-    const cached = localStorage.getItem('kl_services_cache');
-    if (cached) {
-      const { data, ts } = JSON.parse(cached);
-      if (Date.now() - ts < 24 * 3600 * 1000) {
-        allServices = data;
-        console.log('Services from cache:', allServices.length);
-        return;
-      }
-    }
-  } catch(e) {}
-
-  // Load from API with slow pace
-  try {
-    let items = [], offset = 0;
-    while(true) {
-      const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=50&offset=${offset}`);
-      const batch = Array.isArray(data) ? data : (data.items || []);
-      if (!batch.length) break;
-      items.push(...batch);
-      offset += batch.length;
-      if (batch.length < 50) break;
-      await new Promise(r => setTimeout(r, 800));
-    }
-    allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
-    console.log('Services loaded:', allServices.length);
-    // Save to cache
-    try {
-      localStorage.setItem('kl_services_cache', JSON.stringify({ data: allServices, ts: Date.now() }));
-    } catch(e) {}
-  } catch(e) { console.log('Services load error:', e.message); }
+    // Search by name via API
+    const param = query ? `&name=${encodeURIComponent(query)}` : '';
+    const grpParam = group ? `&service_groups=${encodeURIComponent(group)}` : '';
+    const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=50${param}${grpParam}`);
+    const items = Array.isArray(data) ? data : (data.items || []);
+    return items.filter(s => !s.archived && s.name);
+  } catch(e) {
+    console.log('Services search error:', e.message);
+    return [];
+  }
 }
 
 let activeGroupFilter = {bm: '', cm: ''};
 
-function getSvcGroups() {
-  const groups = new Set();
-  allServices.forEach(s => {
-    if (s.service_groups) s.service_groups.split(',').forEach(g => { const t=g.trim(); if(t) groups.add(t); });
-  });
-  return [...groups].sort((a,b)=>a.localeCompare(b,'ru'));
+let cachedGroups = null;
+
+async function getAndRenderGroups(prefix, onClickFn) {
+  if (!cachedGroups) {
+    try {
+      const d = await apiGet(`/list/a/${ACC}/u/${USR}/m/GetServiceGroups`);
+      const items = Array.isArray(d) ? d : (d.items || d.groups || []);
+      if (items.length) {
+        cachedGroups = items.map(g => g.name || g).filter(Boolean).sort((a,b)=>a.localeCompare(b,'ru'));
+      }
+    } catch(e) {}
+    // Fallback: load first page of services and extract groups
+    if (!cachedGroups || !cachedGroups.length) {
+      try {
+        const d = await apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=50`);
+        const items = Array.isArray(d) ? d : (d.items || []);
+        const groups = new Set();
+        items.forEach(s => {
+          if (s.service_groups) s.service_groups.split(',').forEach(g => { const t=g.trim(); if(t) groups.add(t); });
+        });
+        cachedGroups = [...groups].sort((a,b)=>a.localeCompare(b,'ru'));
+      } catch(e) {}
+    }
+  }
+  renderGroupColWithData(prefix, onClickFn, cachedGroups || []);
+}
+
+function renderGroupColWithData(prefix, onClickFn, groups) {
+  const el = document.getElementById(prefix+'-svc-groups-col');
+  if (!el) return;
+  const cur = activeGroupFilter[prefix];
+  el.innerHTML = `<div onclick="setGroupFilter('${prefix}','','${onClickFn}')" style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border);${cur===''?'background:var(--accent);color:#fff;font-weight:600':'color:var(--text2)'}">Все</div>` +
+    groups.map(g =>
+      `<div onclick="setGroupFilter('${prefix}','${g.replace(/'/g,"\\'")}','${onClickFn}')"
+        style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border);line-height:1.3;${cur===g?'background:var(--accent);color:#fff;font-weight:600':'color:var(--text2)'}">${esc(g)}</div>`
+    ).join('');
 }
 
 function renderGroupCol(prefix, onClickFn) {
@@ -2614,7 +2633,7 @@ function renderGroupCol(prefix, onClickFn) {
 
 function setGroupFilter(prefix, group, onClickFn) {
   activeGroupFilter[prefix] = group;
-  renderGroupCol(prefix, onClickFn);
+  renderGroupColWithData(prefix, onClickFn, cachedGroups || []);
   if (prefix === 'bm') filterBookingServices();
   else filterCardServices();
 }
@@ -2632,17 +2651,22 @@ function svcResultsHtml(filtered, onClickFn) {
 }
 
 function filterBookingServices() {
-  const q = document.getElementById('bm-svc-search').value.trim().toLowerCase();
+  const q = document.getElementById('bm-svc-search').value.trim();
   const res = document.getElementById('bm-svc-results');
   const group = activeGroupFilter.bm;
-  if (!group && q.length < 1) { res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите название</div>'; return; }
-  const filtered = allServices.filter(s => {
-    if (selectedServices.find(x=>x.id===s.id)) return false;
-    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
-    return true;
-  }).slice(0, 50);
-  res.innerHTML = svcResultsHtml(filtered, 'addBookingService');
+  if (!group && q.length < 2) {
+    res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите 2+ символа</div>';
+    return;
+  }
+  res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Поиск...</div>';
+  clearTimeout(svcSearchTimer);
+  svcSearchTimer = setTimeout(async () => {
+    const results = await searchServicesApi(q, group);
+    const filtered = results.filter(s => !selectedServices.find(x=>x.id===s.id));
+    if (document.getElementById('bm-svc-results')) {
+      document.getElementById('bm-svc-results').innerHTML = svcResultsHtml(filtered, 'addBookingService');
+    }
+  }, 300);
 }
 
 function addBookingService(id, name, price) {
@@ -2684,13 +2708,13 @@ function openBooking(empId, date, time) {
     if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
     loadServices().then(() => {
       if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
-    renderGroupCol('bm', 'addBookingService');
+    getAndRenderGroups('bm', 'addBookingService');
     filterBookingServices();
     });
   } else {
     const search = document.getElementById('bm-svc-search');
     if (search) search.placeholder = `Поиск среди ${allServices.length} услуг...`;
-    renderGroupCol('bm', 'addBookingService');
+    getAndRenderGroups('bm', 'addBookingService');
     filterBookingServices();
   }
   const empName = employeeMap[empId] || empId;
@@ -2725,7 +2749,7 @@ function openBooking(empId, date, time) {
   document.getElementById('booking-modal').style.display = 'flex';
   // Render groups after modal is visible
   setTimeout(() => {
-    renderGroupCol('bm', 'addBookingService');
+    getAndRenderGroups('bm', 'addBookingService');
     filterBookingServices();
   }, 0);
 }
