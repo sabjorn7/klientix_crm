@@ -472,14 +472,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 
         <div style="margin-bottom:14px">
           <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Услуги <span style="color:var(--muted);font-weight:400">(опционально)</span></label>
-          <div style="margin-bottom:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
-            <input type="text" id="bm-svc-search" placeholder="Поиск по названию..." style="width:100%;background:var(--surface2);border:none;border-bottom:1px solid var(--border);padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;outline:none" oninput="filterBookingServices()">
-            <div style="display:flex;height:180px">
-              <div id="bm-svc-groups-col" style="width:38%;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);flex-shrink:0"></div>
-              <div id="bm-svc-results" style="flex:1;overflow-y:auto"></div>
-            </div>
-          </div>
-          <div id="bm-svc-selected" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+          <div id="bm-svc-selected" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
+          <button onclick="openSvcPicker('bm')" style="width:100%;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:9px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">🔍 Выбрать услугу</button>
         </div>
 
         <div id="bm-error" style="display:none;background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--danger)"></div>
@@ -536,6 +530,25 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
     </div>
   </div>
 
+  <!-- SERVICE PICKER MODAL -->
+  <div id="svc-picker-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center" onclick="if(event.target===this)closeSvcPicker()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:700px;max-width:96vw;height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:16px;font-weight:700">Выбор услуги</div>
+        <button onclick="closeSvcPicker()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <input type="text" id="svc-search" placeholder="Поиск по названию..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" oninput="filterSvcPicker()">
+      </div>
+      <div style="display:flex;flex:1;overflow:hidden">
+        <!-- Groups -->
+        <div id="svc-groups-col" style="width:220px;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;background:var(--surface2)"></div>
+        <!-- Services -->
+        <div id="svc-list-col" style="flex:1;overflow-y:auto;padding:0"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- CLIENT CARD MODAL -->
   <div id="client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeClientCard()">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto">
@@ -551,13 +564,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
         </div>
         <div id="cm-services-list" style="margin-bottom:8px"></div>
         <div id="cm-add-service" style="display:none">
-          <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-            <input type="text" id="cm-svc-search" placeholder="Поиск по названию..." style="width:100%;background:var(--surface2);border:none;border-bottom:1px solid var(--border);padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;outline:none" oninput="filterCardServices()">
-            <div style="display:flex;height:180px">
-              <div id="cm-svc-groups-col" style="width:38%;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);flex-shrink:0"></div>
-              <div id="cm-svc-results" style="flex:1;overflow-y:auto"></div>
-            </div>
-          </div>
+          <!-- service picker trigger handled by toggleAddService -->
         </div>
       </div>
 
@@ -2776,16 +2783,7 @@ function openBooking(empId, date, time) {
 
   document.getElementById('booking-modal').style.display = 'flex';
   // Load services and render groups
-  getAndRenderGroups('bm', 'addBookingService');
-  if (!allServices.length) {
-    document.getElementById('bm-svc-results').innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Загрузка услуг (~1 мин)...</div>';
-    loadServices().then(() => {
-      console.log('services ready:', allServices.length);
-      filterBookingServices();
-    });
-  } else {
-    filterBookingServices();
-  }
+  // Services loaded on demand when picker opens
 }
 
 function toggleNewClient() {
