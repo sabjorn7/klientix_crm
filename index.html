@@ -2787,9 +2787,6 @@ function openBooking(empId, date, time) {
   bookingState = { empId: String(empId), date, time, clientId: null };
   selectedServices = [];
   renderSelectedServices();
-  if (!allServices.length) {
-    const search = document.getElementById('bm-svc-search');
-    if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
 
   const empName = employeeMap[empId] || empId;
 
@@ -3479,7 +3476,6 @@ function showEmpty() {
   document.getElementById('pag').style.display = 'none';
 }
 function showErr(msg) { const e = document.getElementById('error-msg'); e.textContent = msg; e.style.display = 'block'; }
-}
 function hideErr() { document.getElementById('error-msg').style.display = 'none'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
