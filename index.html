@@ -2495,8 +2495,7 @@ function filterCardServices() {
   }
   const filtered = allServices.filter(s => {
     if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (!group && q.length < 2) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
+    if (q.length >= 1 && !s.name.toLowerCase().includes(q.trim())) return false;
     return true;
   }).slice(0, 50);
   res.style.display = 'block';
@@ -2691,8 +2690,7 @@ function filterBookingServices() {
   const filtered = allServices.filter(s => {
     if (selectedServices.find(x=>x.id===s.id)) return false;
     if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (!group && q.length < 2) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
+    if (q.length >= 1 && !s.name.toLowerCase().includes(q.trim())) return false;
     return true;
   }).slice(0, 50);
   res.style.display = 'block';
