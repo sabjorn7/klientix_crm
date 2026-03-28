@@ -560,7 +560,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
       <div style="border-top:1px solid var(--border);padding:16px 20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:12px;font-weight:600">💊 Услуги визита</div>
-          <button onclick="toggleAddService()" id="btn-add-svc" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--accent);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">+ Добавить</button>
+          <button onclick="openSvcPicker('cm')" id="btn-add-svc" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--accent);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">+ Добавить</button>
         </div>
         <div id="cm-services-list" style="margin-bottom:8px"></div>
         <div id="cm-add-service" style="display:none">
@@ -2772,26 +2772,7 @@ function svcResultsHtml(filtered, onClickFn) {
 }
 
 function filterBookingServices() {
-  const q = document.getElementById('bm-svc-search').value.trim().toLowerCase();
-  const res = document.getElementById('bm-svc-results');
-  const group = activeGroupFilter.bm;
-  if (!group && q.length < 2) {
-    res.style.display='block'; res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите 2+ символа</div>';
-    return;
-  }
-  if (!allServices.length) {
-    res.style.display='block'; res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Загрузка услуг...</div>';
-    loadServices().then(() => filterBookingServices());
-    return;
-  }
-  const filtered = allServices.filter(s => {
-    if (selectedServices.find(x=>x.id===s.id)) return false;
-    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q.trim())) return false;
-    return true;
-  }).slice(0, 50);
-  res.style.display = 'block';
-  res.innerHTML = svcResultsHtml(filtered, 'addBookingService');
+  // Handled by svc picker modal
 }
 
 function addBookingService(id, name, price) {
