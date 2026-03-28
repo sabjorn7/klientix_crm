@@ -2589,7 +2589,7 @@ async function getAndRenderGroups(prefix, onClickFn) {
       const d = await apiGet(`/list/a/${ACC}/u/${USR}/m/GetServiceGroups`);
       const items = Array.isArray(d) ? d : (d.items || d.groups || []);
       if (items.length) {
-        cachedGroups = items.map(g => g.name || g).filter(Boolean).sort((a,b)=>a.localeCompare(b,'ru'));
+        cachedGroups = items.map(g => g.value || g.name || g).filter(Boolean).sort((a,b)=>a.localeCompare(b,'ru'));
       }
     } catch(e) {}
     // Fallback: load first page of services and extract groups
