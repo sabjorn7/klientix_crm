@@ -472,9 +472,12 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 
         <div style="margin-bottom:14px">
           <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Услуги <span style="color:var(--muted);font-weight:400">(опционально)</span></label>
-          <div style="position:relative;margin-bottom:6px">
-            <input type="text" id="bm-svc-search" placeholder="Введите название услуги..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" oninput="filterBookingServices()">
-            <div id="bm-svc-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.3);margin-top:2px"></div>
+          <div style="margin-bottom:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <input type="text" id="bm-svc-search" placeholder="Поиск по названию..." style="width:100%;background:var(--surface2);border:none;border-bottom:1px solid var(--border);padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;outline:none" oninput="filterBookingServices()">
+            <div style="display:flex;height:180px">
+              <div id="bm-svc-groups-col" style="width:38%;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);flex-shrink:0"></div>
+              <div id="bm-svc-results" style="flex:1;overflow-y:auto"></div>
+            </div>
           </div>
           <div id="bm-svc-selected" style="display:flex;flex-wrap:wrap;gap:4px"></div>
         </div>
@@ -548,9 +551,12 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
         </div>
         <div id="cm-services-list" style="margin-bottom:8px"></div>
         <div id="cm-add-service" style="display:none">
-          <div style="position:relative">
-            <input type="text" id="cm-svc-search" placeholder="Введите название услуги..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" oninput="filterCardServices()">
-            <div id="cm-svc-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.3);margin-top:2px"></div>
+          <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <input type="text" id="cm-svc-search" placeholder="Поиск по названию..." style="width:100%;background:var(--surface2);border:none;border-bottom:1px solid var(--border);padding:8px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box;outline:none" oninput="filterCardServices()">
+            <div style="display:flex;height:180px">
+              <div id="cm-svc-groups-col" style="width:38%;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);flex-shrink:0"></div>
+              <div id="cm-svc-results" style="flex:1;overflow-y:auto"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -2461,7 +2467,12 @@ function toggleAddService() {
       if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
       loadServices().then(() => {
         if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
+      renderGroupCol('cm', 'addServiceToVisit');
+      filterCardServices();
       });
+    } else {
+      renderGroupCol('cm', 'addServiceToVisit');
+      filterCardServices();
     }
   }
 }
@@ -2469,10 +2480,13 @@ function toggleAddService() {
 function filterCardServices() {
   const q = document.getElementById('cm-svc-search').value.trim().toLowerCase();
   const res = document.getElementById('cm-svc-results');
-  if (q.length < 2) { res.style.display='none'; return; }
-  const filtered = allServices.filter(s => s.name.toLowerCase().includes(q)).slice(0, 15);
+  const group = activeGroupFilter.cm;
+  const filtered = allServices.filter(s => {
+    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
+    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
+    return true;
+  }).slice(0, 30);
   res.innerHTML = svcResultsHtml(filtered, 'addServiceToVisit');
-  res.style.display = 'block';
 }
 
 async function addServiceToVisit(serviceId, serviceName) {
@@ -2570,6 +2584,35 @@ async function loadServices() {
   } catch(e) { console.log('Services load error:', e.message); }
 }
 
+let activeGroupFilter = {bm: '', cm: ''};
+
+function getSvcGroups() {
+  const groups = new Set();
+  allServices.forEach(s => {
+    if (s.service_groups) s.service_groups.split(',').forEach(g => { const t=g.trim(); if(t) groups.add(t); });
+  });
+  return [...groups].sort((a,b)=>a.localeCompare(b,'ru'));
+}
+
+function renderGroupCol(prefix, onClickFn) {
+  const groups = getSvcGroups();
+  const el = document.getElementById(prefix+'-svc-groups-col');
+  if (!el) return;
+  const cur = activeGroupFilter[prefix];
+  el.innerHTML = `<div onclick="setGroupFilter('${prefix}','','${onClickFn}')" style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border);${cur===''?'background:var(--accent);color:#fff;font-weight:600':'color:var(--text2)'}">Все</div>` +
+    groups.map(g =>
+      `<div onclick="setGroupFilter('${prefix}','${g.replace(/'/g,'\\'+'\'')}','${onClickFn}')"
+        style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border);line-height:1.3;${cur===g?'background:var(--accent);color:#fff;font-weight:600':'color:var(--text2)'}">${esc(g)}</div>`
+    ).join('');
+}
+
+function setGroupFilter(prefix, group, onClickFn) {
+  activeGroupFilter[prefix] = group;
+  renderGroupCol(prefix, onClickFn);
+  if (prefix === 'bm') filterBookingServices();
+  else filterCardServices();
+}
+
 function svcResultsHtml(filtered, onClickFn) {
   if (!filtered.length) return '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Не найдено</div>';
   return filtered.map(s =>
@@ -2585,12 +2628,14 @@ function svcResultsHtml(filtered, onClickFn) {
 function filterBookingServices() {
   const q = document.getElementById('bm-svc-search').value.trim().toLowerCase();
   const res = document.getElementById('bm-svc-results');
-  if (q.length < 2) { res.style.display='none'; return; }
-  const filtered = allServices.filter(s =>
-    s.name.toLowerCase().includes(q) && !selectedServices.find(x=>x.id===s.id)
-  ).slice(0, 15);
+  const group = activeGroupFilter.bm;
+  const filtered = allServices.filter(s => {
+    if (selectedServices.find(x=>x.id===s.id)) return false;
+    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
+    if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
+    return true;
+  }).slice(0, 30);
   res.innerHTML = svcResultsHtml(filtered, 'addBookingService');
-  res.style.display = 'block';
 }
 
 function addBookingService(id, name, price) {
@@ -2632,10 +2677,14 @@ function openBooking(empId, date, time) {
     if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
     loadServices().then(() => {
       if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
+    renderGroupCol('bm', 'addBookingService');
+    filterBookingServices();
     });
   } else {
     const search = document.getElementById('bm-svc-search');
     if (search) search.placeholder = `Поиск среди ${allServices.length} услуг...`;
+    renderGroupCol('bm', 'addBookingService');
+    filterBookingServices();
   }
   const empName = employeeMap[empId] || empId;
 
