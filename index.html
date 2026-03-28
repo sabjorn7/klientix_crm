@@ -2485,11 +2485,13 @@ function filterCardServices() {
   const q = document.getElementById('cm-svc-search').value.trim().toLowerCase();
   const res = document.getElementById('cm-svc-results');
   const group = activeGroupFilter.cm;
+  // Show services if group selected OR search query entered
+  if (!group && q.length < 1) { res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите название</div>'; return; }
   const filtered = allServices.filter(s => {
     if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
     if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
     return true;
-  }).slice(0, 30);
+  }).slice(0, 50);
   res.innerHTML = svcResultsHtml(filtered, 'addServiceToVisit');
 }
 
@@ -2633,12 +2635,13 @@ function filterBookingServices() {
   const q = document.getElementById('bm-svc-search').value.trim().toLowerCase();
   const res = document.getElementById('bm-svc-results');
   const group = activeGroupFilter.bm;
+  if (!group && q.length < 1) { res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите название</div>'; return; }
   const filtered = allServices.filter(s => {
     if (selectedServices.find(x=>x.id===s.id)) return false;
     if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
     if (q.length >= 1 && !s.name.toLowerCase().includes(q)) return false;
     return true;
-  }).slice(0, 30);
+  }).slice(0, 50);
   res.innerHTML = svcResultsHtml(filtered, 'addBookingService');
 }
 
