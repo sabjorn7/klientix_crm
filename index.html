@@ -2466,7 +2466,7 @@ function toggleAddService() {
       const search = document.getElementById('cm-svc-search');
       if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
       loadServices().then(() => {
-        if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
+        if (search) { search.placeholder = 'Поиск по названию...'; search.disabled = false; }
       setTimeout(() => {
         getAndRenderGroups('cm', 'addServiceToVisit');
         filterCardServices();
@@ -2707,13 +2707,13 @@ function openBooking(empId, date, time) {
     const search = document.getElementById('bm-svc-search');
     if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
     loadServices().then(() => {
-      if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
+      if (search) { search.placeholder = 'Поиск по названию...'; search.disabled = false; }
     getAndRenderGroups('bm', 'addBookingService');
     filterBookingServices();
     });
   } else {
     const search = document.getElementById('bm-svc-search');
-    if (search) search.placeholder = `Поиск среди ${allServices.length} услуг...`;
+    if (search) search.placeholder = 'Поиск по названию...';
     getAndRenderGroups('bm', 'addBookingService');
     filterBookingServices();
   }
