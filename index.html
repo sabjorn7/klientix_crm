@@ -2462,29 +2462,7 @@ let bookingState = { empId: null, date: null, time: null, clientId: null };
 let currentCardVisitId = null;
 
 function toggleAddService() {
-  const el = document.getElementById('cm-add-service');
-  const btn = document.getElementById('btn-add-svc');
-  const visible = el.style.display !== 'none';
-  el.style.display = visible ? 'none' : 'block';
-  btn.textContent = visible ? '+ Добавить' : '× Отмена';
-  if (!visible) {
-    if (!allServices.length) {
-      const search = document.getElementById('cm-svc-search');
-      if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
-      loadServices().then(() => {
-        if (search) { search.placeholder = 'Поиск по названию...'; search.disabled = false; }
-      setTimeout(() => {
-        getAndRenderGroups('cm', 'addServiceToVisit');
-        filterCardServices();
-      }, 0);
-      });
-    } else {
-      setTimeout(() => {
-        getAndRenderGroups('cm', 'addServiceToVisit');
-        filterCardServices();
-      }, 0);
-    }
-  }
+  openSvcPicker('cm');
 }
 
 function filterCardServices() {
@@ -2755,8 +2733,8 @@ function renderGroupCol(prefix, onClickFn) {
 function setGroupFilter(prefix, group, onClickFn) {
   activeGroupFilter[prefix] = group;
   renderGroupColWithData(prefix, onClickFn, cachedGroups || []);
-  if (prefix === 'bm') filterBookingServices();
-  else filterCardServices();
+  // Filter handled by svc picker modal
+  renderSvcList();
 }
 
 function svcResultsHtml(filtered, onClickFn) {
@@ -2812,17 +2790,7 @@ function openBooking(empId, date, time) {
   if (!allServices.length) {
     const search = document.getElementById('bm-svc-search');
     if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
-    loadServices().then(() => {
-      if (search) { search.placeholder = 'Поиск по названию...'; search.disabled = false; }
-    getAndRenderGroups('bm', 'addBookingService');
-    filterBookingServices();
-    });
-  } else {
-    const search = document.getElementById('bm-svc-search');
-    if (search) search.placeholder = 'Поиск по названию...';
-    getAndRenderGroups('bm', 'addBookingService');
-    filterBookingServices();
-  }
+
   const empName = employeeMap[empId] || empId;
 
   // Fill info
@@ -3511,6 +3479,7 @@ function showEmpty() {
   document.getElementById('pag').style.display = 'none';
 }
 function showErr(msg) { const e = document.getElementById('error-msg'); e.textContent = msg; e.style.display = 'block'; }
+}
 function hideErr() { document.getElementById('error-msg').style.display = 'none'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
