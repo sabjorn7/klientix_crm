@@ -2488,25 +2488,7 @@ function toggleAddService() {
 }
 
 function filterCardServices() {
-  const q = document.getElementById('cm-svc-search').value.trim().toLowerCase();
-  const res = document.getElementById('cm-svc-results');
-  const group = activeGroupFilter.cm;
-  if (!group && q.length < 2) {
-    res.style.display='block'; res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Выберите группу или введите 2+ символа</div>';
-    return;
-  }
-  if (!allServices.length) {
-    res.style.display='block'; res.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Загрузка услуг...</div>';
-    loadServices().then(() => filterCardServices());
-    return;
-  }
-  const filtered = allServices.filter(s => {
-    if (group && !(s.service_groups||'').split(',').map(x=>x.trim()).includes(group)) return false;
-    if (q.length >= 1 && !s.name.toLowerCase().includes(q.trim())) return false;
-    return true;
-  }).slice(0, 50);
-  res.style.display = 'block';
-  res.innerHTML = svcResultsHtml(filtered, 'addServiceToVisit');
+  // Now handled by svc picker modal
 }
 
 async function addServiceToVisit(serviceId, serviceName) {
@@ -2587,22 +2569,39 @@ async function loadServices() {
     }
   } catch(e) {}
 
+  // Show loading indicator in picker if open
+  const showSvcProgress = (loaded, total) => {
+    const el = document.getElementById('svc-list-col');
+    if (el && document.getElementById('svc-picker-modal')?.style.display !== 'none') {
+      const pct = total ? Math.round(loaded/total*100) : Math.min(Math.round(loaded/3969*100), 99);
+      el.innerHTML = `<div style="padding:30px;text-align:center">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Загрузка услуг: ${loaded.toLocaleString('ru')}...</div>
+        <div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;width:200px;margin:0 auto">
+          <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px;transition:width .3s"></div>
+        </div>
+      </div>`;
+    }
+  };
+
   servicesLoading = (async () => {
     try {
       let items = [], offset = 0;
       while(true) {
         const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=50&offset=${offset}`);
         const batch = Array.isArray(data) ? data : (data.items || []);
-        console.log('svc batch:', batch.length, 'offset:', offset);
         if (!batch.length) break;
         items.push(...batch);
         offset += batch.length;
+        showSvcProgress(items.length);
         if (batch.length < 50) break;
         await new Promise(r => setTimeout(r, 1200));
       }
       allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
       console.log('Services loaded:', allServices.length);
       try { localStorage.setItem('kl_services_cache', JSON.stringify({ data: allServices, ts: Date.now() })); } catch(e) {}
+      // Refresh picker if open
+      renderSvcGroups();
+      renderSvcList();
     } catch(e) { console.log('Services load error:', e.message); }
     finally { servicesLoading = null; }
   })();
