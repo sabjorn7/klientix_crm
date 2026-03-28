@@ -2773,12 +2773,17 @@ function openBooking(empId, date, time) {
   document.getElementById('bm-success').style.display = 'none';
 
   document.getElementById('booking-modal').style.display = 'flex';
-  // Render groups after modal is visible
-  setTimeout(async () => {
-    await getAndRenderGroups('bm', 'addBookingService');
-    if (!allServices.length) loadServices().then(() => filterBookingServices());
-    else filterBookingServices();
-  }, 0);
+  // Load services and render groups
+  getAndRenderGroups('bm', 'addBookingService');
+  if (!allServices.length) {
+    document.getElementById('bm-svc-results').innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Загрузка услуг (~1 мин)...</div>';
+    loadServices().then(() => {
+      console.log('services ready:', allServices.length);
+      filterBookingServices();
+    });
+  } else {
+    filterBookingServices();
+  }
 }
 
 function toggleNewClient() {
