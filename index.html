@@ -2467,12 +2467,16 @@ function toggleAddService() {
       if (search) { search.placeholder = 'Загрузка услуг...'; search.disabled = true; }
       loadServices().then(() => {
         if (search) { search.placeholder = `Поиск среди ${allServices.length} услуг...`; search.disabled = false; }
-      renderGroupCol('cm', 'addServiceToVisit');
-      filterCardServices();
+      setTimeout(() => {
+        renderGroupCol('cm', 'addServiceToVisit');
+        filterCardServices();
+      }, 0);
       });
     } else {
-      renderGroupCol('cm', 'addServiceToVisit');
-      filterCardServices();
+      setTimeout(() => {
+        renderGroupCol('cm', 'addServiceToVisit');
+        filterCardServices();
+      }, 0);
     }
   }
 }
@@ -2716,6 +2720,11 @@ function openBooking(empId, date, time) {
   document.getElementById('bm-success').style.display = 'none';
 
   document.getElementById('booking-modal').style.display = 'flex';
+  // Render groups after modal is visible
+  setTimeout(() => {
+    renderGroupCol('bm', 'addBookingService');
+    filterBookingServices();
+  }, 0);
 }
 
 function toggleNewClient() {
