@@ -695,7 +695,6 @@ function showApp() {
   loadNotesIndex();
   loadCallLog();
   initRealtime();
-  setTimeout(() => loadServices(), 3000); // загружаем услуги в фоне
   loadEmployees().then(() => loadData());
 }
 
@@ -832,6 +831,8 @@ async function loadData() {
     filtered = [...all];
     applyFilters();
     updateStats();
+    // Загружаем услуги после журнала с большой паузой
+    setTimeout(() => loadServices(), 5000);
   } catch(e) { showErr('Ошибка загрузки: ' + e.message); showEmpty(); }
 }
 
@@ -2537,7 +2538,7 @@ async function loadServices() {
       items.push(...batch);
       offset += batch.length;
       if (batch.length < 50) break;
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 600 + Math.random()*200));
     }
     allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
     console.log('Services loaded:', allServices.length);
