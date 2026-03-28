@@ -2658,8 +2658,8 @@ async function loadServices() {
       let offset = 0;
       let hasMore = true;
       while(hasMore) {
-        // Load 4 pages in parallel
-        const offsets = [offset, offset+50, offset+100, offset+150];
+        // Load 2 pages in parallel
+        const offsets = [offset, offset+50];
         const results = await Promise.all(
           offsets.map(off => apiGet(`/list/a/${ACC}/u/${USR}/m/Services/?limit=50&offset=${off}`).catch(()=>({items:[]})))
         );
@@ -2671,9 +2671,9 @@ async function loadServices() {
           if (batch.length === 50) hasMore = true;
           else break;
         }
-        offset += 200;
+        offset += 100;
         showSvcProgress(items.length);
-        if (hasMore) await new Promise(r => setTimeout(r, 600));
+        if (hasMore) await new Promise(r => setTimeout(r, 500));
       }
       allServices = items.filter(s => !s.archived && s.name).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
       console.log('Services loaded:', allServices.length);
