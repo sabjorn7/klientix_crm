@@ -1479,6 +1479,16 @@ function showClientCard(idx) {
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--success);font-weight:700">${price.toLocaleString('ru')} ₽</div>
       </div>` : ''}
     </div>
+    ${(a.status === 'scheduled' || a.status === 'confirmed') ? `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button onclick="changeVisitStatus(${idx},'confirmed')" style="flex:1;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.4);border-radius:8px;padding:8px;color:var(--accent);font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✓ Подтвердить</button>
+      <button onclick="changeVisitStatus(${idx},'cancelled')" style="flex:1;background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.4);border-radius:8px;padding:8px;color:var(--danger);font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✕ Отменить</button>
+    </div>` : ''}
+    ${a.status === 'arrived' || a.status === 'in_progress' ? `
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button onclick="changeVisitStatus(${idx},'finished')" style="flex:1;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.4);border-radius:8px;padding:8px;color:var(--success);font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✓ Завершить</button>
+      <button onclick="changeVisitStatus(${idx},'cancelled')" style="flex:1;background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.4);border-radius:8px;padding:8px;color:var(--danger);font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">✕ Отменить</button>
+    </div>` : ''}
     ${svcsHtml ? `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Услуги</div>${svcsHtml}` : ''}
     <div style="font-size:11px;color:var(--muted);margin-top:12px">Всего визитов в загруженном периоде: <strong style="color:var(--text)">${all.filter(x=>x.client_id===a.client_id).length}</strong></div>
     ${historyHtml}
@@ -2468,6 +2478,36 @@ function closeClientHistory() {
 
 // ── BOOKING ──
 let bookingState = { empId: null, date: null, time: null, clientId: null };
+
+async function changeVisitStatus(aIdx, newStatus) {
+  const a = all[aIdx];
+  if (!a) return;
+  const STATUS_LABEL = {scheduled:'Запланирован',confirmed:'Подтверждён',cancelled:'Отменён',finished:'Завершён',missed:'Пропущен'};
+  if (!confirm(`Изменить статус на «${STATUS_LABEL[newStatus]||newStatus}»?`)) return;
+
+  const visitId = a.appointment_id || a.id;
+  const editBase = BASE.includes('klientiks.ru') ? BASE : BASE.replace('/api', '') + '/api';
+  try {
+    const params = new URLSearchParams({ id: visitId, status: newStatus });
+    const r = await fetch(editBase + `/edit/a/${ACC}/u/${USR}/m/Appointments/`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await r.json();
+    if (data.status === true) {
+      // Update local data
+      a.status = newStatus;
+      all[aIdx] = a;
+      // Refresh card
+      showClientCard(aIdx);
+    } else {
+      alert('Ошибка: ' + JSON.stringify(data).slice(0,100));
+    }
+  } catch(e) {
+    alert('Ошибка: ' + e.message);
+  }
+}
 
 // ── CARD SERVICES ──
 let currentCardVisitId = null;
