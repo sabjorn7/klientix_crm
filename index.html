@@ -1391,9 +1391,11 @@ function renderCalendar() {
         const t2 = (a.finish_datetime||'').split(' ')[1]?.slice(0,5)||'';
         const client = a.client_name || '—';
         const sc = {finished:'#34c77b',cancelled:'#f05c5c',missed:'#f05c5c',confirmed:'#4f8ef7',scheduled:'#f5a623'}[a.status]||color;
-        return `<div style="background:${color}15;border-left:2px solid ${sc};border-radius:0 4px 4px 0;padding:3px 6px;margin-bottom:2px" title="${esc(client)}">
+        const aIdx = all.indexOf(a);
+        const hasNote = clientsWithNotes.has(a.client_id);
+        return `<div onclick="if(${aIdx}>=0)showClientCard(${aIdx})" style="background:${color}15;border-left:2px solid ${sc};border-radius:0 4px 4px 0;padding:3px 6px;margin-bottom:2px;cursor:pointer" title="${esc(client)} — нажмите для карточки">
           <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${sc};font-weight:600">${t}${t2?'–'+t2:''}</span>
-          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${esc(client.split(' ')[0])} ${esc((client.split(' ')[1]||'')[0]||'')}.</div>
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${esc(client.split(' ')[0])} ${esc((client.split(' ')[1]||'')[0]||'')}${hasNote?'📝':''}</div>
         </div>`;
       }).join('');
 
