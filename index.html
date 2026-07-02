@@ -205,8 +205,12 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
     <button class="tab-btn" id="tab-schedule" onclick="switchTab('schedule')">📅 Расписание</button>
     <button class="tab-btn" id="tab-clients" onclick="switchTab('clients')">👤 Клиенты</button>
     <button class="tab-btn" id="tab-calls" onclick="switchTab('calls')">📞 Обзвон</button>
+    <button class="tab-btn" id="tab-waitlist" onclick="switchTab('waitlist')">⏳ Очередь</button>
     <button class="tab-btn" id="tab-forecast" onclick="switchTab('forecast')">🔮 Прогноз</button>
-    <button class="tab-btn" id="tab-dashboard" onclick="switchTab('dashboard')">📈 Дашборд</button>
+    <button class="tab-btn" id="tab-tasks" onclick="switchTab('tasks')">✅ Задачи</button>
+    <button class="tab-btn" id="tab-pulse" onclick="switchTab('pulse')">📊 Пульс</button>
+    <button class="tab-btn" id="tab-bp" onclick="switchTab('bp')">📋 БП</button>
+    <button class="tab-btn" id="tab-primary" onclick="switchTab('primary')">🆕 Первичка</button>
   </div>
 
   <!-- JOURNAL TAB -->
@@ -333,10 +337,290 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
       <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
     </div>
   </div>
+
+  <!-- PRIMARY TAB -->
+  <div id="primary-section" style="display:none;padding:20px 24px">
+    <div id="cards-monitor-content" style="display:none"></div>
+    <div id="primary-body">
+      <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+  <!-- PRIMARY PATIENTS MODAL -->
+  <div id="prim-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closePrimModal()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:560px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700" id="prim-modal-title">Первичные пациенты</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="prim-modal-sub"></div>
+        </div>
+        <button onclick="closePrimModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead style="position:sticky;top:0;background:var(--surface);z-index:1">
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Пациент</th>
+              <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Телефон</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Дата</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Сумма</th>
+            </tr>
+          </thead>
+          <tbody id="prim-modal-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS TAB -->
+  <div id="tasks-section" style="display:none">
+    <!-- Filters -->
+    <div style="padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button onclick="setTaskFilter('all')" id="tf-all" class="pulse-period-btn active">Все</button>
+      <button onclick="setTaskFilter('open')" id="tf-open" class="pulse-period-btn">🔵 Открытые</button>
+      <button onclick="setTaskFilter('in_progress')" id="tf-in_progress" class="pulse-period-btn">🟡 В работе</button>
+      <button onclick="setTaskFilter('done')" id="tf-done" class="pulse-period-btn">✅ Закрытые</button>
+      <select id="tf-assignee" onchange="renderTasks()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+        <option value="">Все исполнители</option>
+        <option value="Кирилл">Кирилл</option>
+        <option value="Нина">Нина</option>
+        <option value="Арсений">Арсений</option>
+        <option value="Андрей">Андрей</option>
+        <option value="Милена">Милена</option>
+        <option value="Аутсорс">Аутсорс</option>
+      </select>
+      <select id="tf-priority" onchange="renderTasks()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+        <option value="">Все приоритеты</option>
+        <option value="urgent">🔴 Срочный</option>
+        <option value="normal">🟡 Средний</option>
+        <option value="low">🟢 Низкий</option>
+      </select>
+      <button onclick="openTaskModal()" style="margin-left:auto;background:var(--accent);border:none;border-radius:7px;padding:7px 16px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">+ Задача</button>
+      <button onclick="loadTasks()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻</button>
+    </div>
+    <!-- Stats -->
+    <div id="tasks-stats" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border)"></div>
+    <!-- Board -->
+    <div id="tasks-body" style="padding:16px 24px"></div>
+  </div>
+
+  <!-- TASK MODAL (create/edit) -->
+  <div id="task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeTaskModal()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)">
+        <div style="font-size:16px;font-weight:700" id="task-modal-title">Новая задача</div>
+        <button onclick="closeTaskModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Название *</label>
+          <input id="tm-title" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Что нужно сделать...">
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Исполнители</label>
+            <div id="tm-assignees" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Кирилл" style="accent-color:var(--accent)"> Кирилл</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Нина" style="accent-color:var(--accent)"> Нина</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Арсений" style="accent-color:var(--accent)"> Арсений</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Андрей" style="accent-color:var(--accent)"> Андрей</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Милена" style="accent-color:var(--accent)"> Милена</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2)"><input type="checkbox" value="Аутсорс" style="accent-color:var(--accent)"> Аутсорс</label>
+            </div>
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Приоритет</label>
+            <select id="tm-priority" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px">
+              <option value="urgent">🔴 Срочный</option>
+              <option value="normal" selected>🟡 Средний</option>
+              <option value="low">🟢 Низкий</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Дата постановки</label>
+            <input id="tm-created-date" type="date" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Дата завершения</label>
+            <input id="tm-due" type="date" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Описание</label>
+          <textarea id="tm-description" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;resize:none;box-sizing:border-box" placeholder="Детали задачи..."></textarea>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Постановщик</label>
+          <input id="tm-created-by" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Ваше имя">
+        </div>
+        <div id="tm-resolution-block" style="display:none">
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Итог / решение</label>
+          <textarea id="tm-resolution" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;resize:none;box-sizing:border-box" placeholder="Что было сделано..."></textarea>
+        </div>
+        <div id="tm-error" style="display:none;color:var(--danger);font-size:12px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="closeTaskModal()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">Отмена</button>
+          <button id="tm-save-btn" onclick="saveTask()" style="flex:2;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Сохранить</button>
+          <button id="tm-close-btn" onclick="closeTask()" style="display:none;flex:2;background:var(--success);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✅ Закрыть задачу</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PULSE TAB -->
+  <div id="pulse-section" style="display:none;padding:20px 24px">
+
+    <!-- Date selector -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="font-size:20px;font-weight:700">📊 Пульс контроля</div>
+      <input type="date" id="pulse-date" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px" onchange="loadPulseDay()">
+      <button onclick="setPulseToday()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">Сегодня</button>
+      <button onclick="loadPulseDay()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻</button>
+    </div>
+
+    <!-- Auto metrics from journal -->
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📈 Автоматически из журнала</div>
+    <div id="pulse-auto" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px"></div>
+
+    <!-- Signals -->
+    <div id="pulse-signals" style="margin-bottom:20px"></div>
+
+    <!-- Next visit % by doctor -->
+    <div id="pulse-next-visit" style="margin-bottom:20px"></div>
+
+    <!-- Manual pulse forms -->
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">✏️ Ручной пульс от команды</div>
+    <div id="pulse-manual" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px"></div>
+
+  </div>
+
+  <!-- VISIT CARD MODAL (admin view) -->
+  <div id="vc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px" onclick="if(event.target===this)document.getElementById('vc-modal').style.display='none'">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:600px;max-width:95vw;margin:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:16px;font-weight:700" id="vc-title">Карта приёма</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="vc-subtitle"></div>
+        </div>
+        <button onclick="document.getElementById('vc-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div id="vc-body" style="padding:24px"></div>
+    </div>
+  </div>
+
+  <!-- BP TAB -->
+  <div id="bp-section" style="display:none;padding:20px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:20px;font-weight:700">📋 Бизнес-процессы</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Регламенты и блок-схемы медицинского центра</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="bp-cards"></div>
+    <!-- BP Detail Modal -->
+    <div id="bp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px" onclick="if(event.target===this)document.getElementById('bp-modal').style.display='none'">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:700px;max-width:95vw;margin:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);border-radius:16px 16px 0 0;z-index:1">
+          <div id="bp-modal-title" style="font-size:18px;font-weight:700"></div>
+          <button onclick="document.getElementById('bp-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer">×</button>
+
+        </div>
+        <div id="bp-modal-body" style="padding:24px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- FORECAST TAB -->
   <div id="forecast-section" style="display:none;padding:20px 24px">
     <div id="forecast-body">
       <div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>
+    </div>
+  </div>
+
+  <!-- WAITLIST TAB -->
+  <div id="waitlist-section" style="display:none">
+    <!-- Filters & stats -->
+    <div style="padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button onclick="setWlFilter('all')" id="wlf-all" class="pulse-period-btn active">Все</button>
+      <button onclick="setWlFilter('waiting')" id="wlf-waiting" class="pulse-period-btn">⏳ Ожидает</button>
+      <button onclick="setWlFilter('contacted')" id="wlf-contacted" class="pulse-period-btn">📞 Связались</button>
+      <button onclick="setWlFilter('booked')" id="wlf-booked" class="pulse-period-btn">✅ Записан</button>
+      <button onclick="setWlFilter('cancelled')" id="wlf-cancelled" class="pulse-period-btn">❌ Отменил</button>
+      <select id="wlf-doctor" onchange="renderWaitlist()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+        <option value="">Все врачи</option>
+      </select>
+      <button onclick="openAddWaitlist()" style="margin-left:auto;background:var(--accent);border:none;border-radius:7px;padding:7px 16px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">+ Добавить</button>
+      <button onclick="loadWaitlist()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻</button>
+    </div>
+    <div id="wl-stats" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border)"></div>
+    <div id="wl-body" style="padding:0 24px 24px"></div>
+  </div>
+
+  <!-- WAITLIST ADD/EDIT MODAL -->
+  <div id="wl-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)closeWlModal()">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:440px;max-width:95vw">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:16px;font-weight:700" id="wl-modal-title">Добавить в очередь</div>
+        <button onclick="closeWlModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Поиск пациента</label>
+          <input id="wl-search" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Имя или телефон..." oninput="searchWlClient()">
+          <div id="wl-search-results" style="margin-top:4px"></div>
+        </div>
+        <div id="wl-selected-client" style="display:none;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:8px;padding:8px 12px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600" id="wl-selected-name">—</div>
+              <div style="font-size:11px;color:var(--text2)" id="wl-selected-phone">—</div>
+            </div>
+            <button onclick="clearWlClient()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">×</button>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Или введите вручную</label>
+          <input id="wl-name" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Фамилия Имя Отчество">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Телефон</label>
+          <input id="wl-phone" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="+7 999 000 00 00">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Врач</label>
+          <select id="wl-doctor-sel" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px">
+            <option value="">Не выбран</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Желаемая дата</label>
+            <input id="wl-desired-date" type="date" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Приоритет</label>
+            <select id="wl-priority" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px">
+              <option value="urgent">🔴 Срочный</option>
+              <option value="normal" selected>🟡 Средний</option>
+              <option value="low">🟢 Низкий</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Комментарий</label>
+          <textarea id="wl-comment" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;resize:none;box-sizing:border-box" placeholder="Пожелания, предпочтения..."></textarea>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Администратор</label>
+          <input id="wl-admin" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box" placeholder="Ваше имя">
+        </div>
+        <div id="wl-error" style="display:none;color:var(--danger);font-size:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="closeWlModal()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text2);font-family:'Onest',sans-serif;font-size:13px;cursor:pointer">Отмена</button>
+          <button onclick="saveWaitlistEntry()" id="wl-save-btn" style="flex:2;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Сохранить</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -349,7 +633,13 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
       <button onclick="setCallFilter('callback')" id="cf-callback" class="pulse-period-btn">🔁 Перезвонит</button>
       <button onclick="setCallFilter('booked')" id="cf-booked" class="pulse-period-btn">✅ Записан</button>
       <button onclick="setCallFilter('refused')" id="cf-refused" class="pulse-period-btn">❌ Отказался</button>
-      <button onclick="loadCallsTab()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+      <button onclick="setCallFilter('dentistry')" id="cf-dentistry" class="pulse-period-btn">🦷 Стоматология</button>
+      <select id="cf-doctor" onchange="renderCallsTable()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+        <option value="">Все врачи</option>
+      </select>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <button onclick="loadCallsTab()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻</button>
+      </div>
     </div>
     <div id="calls-stats" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border)"></div>
     <div id="calls-body" style="padding:0 24px 24px"></div>
@@ -593,6 +883,7 @@ const EXCLUDED_EMPLOYEES = ['Василянский Андрей Валенти�
 
 let ACC = '', USR = '', TOKEN = '';
 let clientsWithNotes = new Set();
+let firstVisitsMap = {}; // client_id -> first_visit_date from Supabase
 let callLogMap = {}; // visit_id -> call log entry // client_ids у которых есть заметки
 
 async function loadNotesIndex() {
@@ -708,6 +999,9 @@ function showApp() {
   loadNotesIndex();
   loadCallLog();
   initRealtime();
+  loadFirstVisits();
+  setTimeout(() => initWaitlistRealtime(), 1000);
+  setTimeout(() => initTasksRealtime(), 1500);
   loadEmployees().then(() => loadData());
 }
 
@@ -734,7 +1028,7 @@ function switchTab(tab) {
     const activeBtn = document.getElementById('tab-'+tab);
     if (activeBtn) activeBtn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
   }, 50);
-  ['today','journal','report','schedule','clients','calls','forecast','dashboard'].forEach(t => {
+  ['today','journal','report','schedule','clients','calls','waitlist','forecast','tasks','pulse','bp','primary'].forEach(t => {
     document.getElementById(t+'-section').style.display = t === tab ? 'block' : 'none';
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
   });
@@ -743,8 +1037,12 @@ function switchTab(tab) {
   if (tab === 'today') renderToday();
   if (tab === 'clients') initClientsTab();
   if (tab === 'calls') loadCallsTab();
+  if (tab === 'waitlist') loadWaitlist();
+  if (tab === 'tasks') loadTasks();
+  if (tab === 'pulse') initPulse();
+  if (tab === 'bp') renderBP();
+  if (tab === 'primary') renderPrimary();
   if (tab === 'forecast') renderForecast();
-  if (tab === 'dashboard') renderDashboard();
 }
 
 async function apiGet(path, retries = 8) {
@@ -788,7 +1086,7 @@ async function loadData() {
   if (!from || !to) { showErr('Укажите период'); return; }
   hideErr(); showLoading(); all = []; page = 1;
 
-  const allStatuses = 'scheduled,confirmed,arrived,in_progress,finished,cancelled,missed';
+  const allStatuses = 'scheduled,confirmed,arrived,in_progress,finished,cancelled,missed,cancelled_by_sms,sms_confirmation_sent';
   const statusParam = stat ? `&status=${stat}` : `&status=${allStatuses}`;
   const empParam = emp ? `&executor_id=${emp}` : '';
   const tsFrom = Math.floor(new Date(from + 'T00:00:00').getTime() / 1000);
@@ -948,8 +1246,8 @@ function renderTable() {
       (x.start_datetime||'') > (a.start_datetime||'')
     );
     const cl = callLogMap[a.id];
-    const CALL_LABELS = {pending:'📞 Не звонили',no_answer:'📵 Не дозвон.',callback:'🔁 Перезвонит',booked:'✅ Записан',refused:'❌ Отказался'};
-    const CALL_COLORS = {pending:'var(--muted)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)'};
+    const CALL_LABELS = {pending:'📞 Не звонили',no_answer:'📵 Не дозвон.',callback:'🔁 Перезвонит',booked:'✅ Записан',refused:'❌ Отказался',dentistry:'🦷 Стоматология'};
+    const CALL_COLORS = {pending:'var(--muted)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)',dentistry:'#a78bfa'};
     const callBadge = cl ? `<span style="font-size:10px;color:${CALL_COLORS[cl.status]||'var(--muted)'};margin-left:6px;cursor:pointer" onclick="event.stopPropagation();openCallLog(${aIdx})">${CALL_LABELS[cl.status]||cl.status}</span>` : '';
     const callBtn = isCancNotResch && !cl ? `<button onclick="event.stopPropagation();openCallLog(${aIdx})" style="font-size:10px;background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.4);border-radius:4px;padding:1px 6px;color:var(--warn);cursor:pointer;margin-left:6px">📞</button>` : '';
     return `<tr style="cursor:pointer" onclick="showClientCard(${aIdx})">
@@ -1213,17 +1511,77 @@ function schChangeMonth(d) {
   renderCalendar();
 }
 
+const EMP_GROUPS = [
+  ['Кинезиолог', [
+    'Копыльцов Кирилл Андреевич',
+    'Лебедев Петр Александрович',
+    'Романова Анна Ильинична',
+    'Долгалева Алина Олеговна',
+    'Гагарина Мария Игоревна',
+    'Лоскутов Михаил Михайлович',
+    'Ульянич Кирилл Александрович',
+    'Мисюра Сергей Григорьевич',
+    'Баутина Александра Евгеньевна',
+    'Храмов Павел Владиславович',
+    'Крутов Григорий Михайлович',
+    'Белоусов Дан Альбертович',
+  ]],
+  ['Стоматолог', [
+    'Точилова Юлия Николаевна',
+    'Семенова Татьяна Анатольевна',
+    'Тимонова Юлия Александровна',
+  ]],
+  ['Другие', [
+    'Соцкова Татьяна Олеговна',
+    'Новосельская Анастасия Дмитриевна',
+  ]],
+]
+
 function renderEmpSelector() {
   const sel = document.getElementById('sch-emp-selector');
   if (!sel) return;
   sel.innerHTML = '';
-  Object.keys(employeeMap).forEach(id => {
-    const name = (employeeMap[id] || '').trim();
-    if (EXCLUDED_EMPLOYEES.includes(name)) return;
-    const label = document.createElement('label');
-    label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap';
-    label.innerHTML = `<input type="checkbox" value="${id}" style="accent-color:var(--accent)" onchange="toggleEmpSel('${id}')"> ${esc(name)}`;
-    sel.appendChild(label);
+
+  // Build reverse map: name -> id
+  const nameToId = {};
+  Object.entries(employeeMap).forEach(([id, name]) => { nameToId[name.trim()] = id; });
+
+  const rendered = new Set();
+
+  EMP_GROUPS.forEach(([groupName, names]) => {
+    // Group header with select-all checkbox
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 10px 3px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px';
+    header.innerHTML = `<input type="checkbox" style="accent-color:var(--accent)" onchange="toggleGroupSel('${groupName}', this.checked)" title="Выбрать всех: ${groupName}"> ${groupName}`;
+    sel.appendChild(header);
+
+    names.forEach(name => {
+      const id = nameToId[name];
+      if (!id) return;
+      rendered.add(id);
+      const label = document.createElement('label');
+      label.dataset.group = groupName;
+      label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 10px 4px 20px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap';
+      label.innerHTML = `<input type="checkbox" value="${id}" style="accent-color:var(--accent)" onchange="toggleEmpSel('${id}')"> ${esc(name)}`;
+      sel.appendChild(label);
+    });
+  });
+
+
+}
+
+function toggleGroupSel(groupName, checked) {
+  const nameToId = {};
+  Object.entries(employeeMap).forEach(([id, name]) => { nameToId[name.trim()] = id; });
+  const group = EMP_GROUPS.find(([g]) => g === groupName);
+  if (!group) return;
+  group[1].forEach(name => {
+    const id = nameToId[name];
+    if (!id) return;
+    if (checked) selectedEmpIds.add(id);
+    else selectedEmpIds.delete(id);
+    const cb = document.querySelector(`#sch-emp-selector input[value="${id}"]`);
+    if (cb) cb.checked = checked;
   });
 }
 
@@ -1674,7 +2032,13 @@ function renderDashboard() {
     const mFinished = finished.filter(a => (a.start_datetime||'').slice(0,7) === m);
     const mRev = mFinished.reduce((s,a) => s+parseFloat(a.price||0), 0);
     const mAvgCheck = mFinished.length > 0 ? Math.round(mRev/mFinished.length) : 0;
-    const mPrimary = monthlyNew[m] || 0;
+    // Accurate primary: clients whose first ever visit is in this month
+    const mPrimary = mFinished.filter(a => {
+      if (firstVisitsMap[a.client_id]) {
+        return firstVisitsMap[a.client_id].slice(0,7) === m;
+      }
+      return clientFirstVisit[a.client_id] === m;
+    }).length;
     const mSecondary = monthlyRepeat[m] || 0;
 
     // Clients who had their Nth visit this month
@@ -1697,6 +2061,9 @@ function renderDashboard() {
     finished.filter(a => (a.start_datetime||'').slice(0,7) < m)
       .sort((a,b) => (a.start_datetime||'').localeCompare(b.start_datetime||''))
       .forEach(a => { prevCumVisits[a.client_id] = (prevCumVisits[a.client_id]||0) + 1; });
+    // Use Supabase first visit data for accurate primary count
+    const mFirstDate = m + '-01';
+    const mLastDate = m + '-31';
 
     let to2nd = 0, to3rd = 0;
     mFinished.forEach(a => {
@@ -1796,7 +2163,10 @@ function renderDashboard() {
   body.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:20px;font-weight:700">📈 Дашборд клиники</div>
-      <button onclick="renderDashboard()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="syncFirstVisits()" id="sync-fv-btn" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer" title="Загрузить историю с 2016 года для точного подсчёта первичных">🔄 Синхронизировать историю</button>
+        <button onclick="renderDashboard()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">↻ Обновить</button>
+      </div>
     </div>
 
     ${sectionTitle('👥 Пациенты')}
@@ -1872,6 +2242,369 @@ function renderDashboard() {
       Конверсия = завершённые / все записи · Отмены = отменённые / все записи · Повторные = пациенты с 2+ визитами
     </div>
   `;
+}
+
+// ── CARDS MONITOR ──
+function showPrimaryTab(tab) {
+  document.getElementById('ptab-primary').style.background = tab==='primary'?'var(--accent)':'var(--surface2)';
+  document.getElementById('ptab-primary').style.color = tab==='primary'?'#fff':'var(--text2)';
+  document.getElementById('ptab-primary').style.border = tab==='primary'?'none':'1px solid var(--border)';
+  document.getElementById('ptab-cards').style.background = tab==='cards'?'var(--accent)':'var(--surface2)';
+  document.getElementById('ptab-cards').style.color = tab==='cards'?'#fff':'var(--text2)';
+  document.getElementById('ptab-cards').style.border = tab==='cards'?'none':'1px solid var(--border)';
+
+  const primary = document.getElementById('primary-tab-content');
+  const cards = document.getElementById('cards-monitor-content');
+  if (primary) primary.style.display = tab==='primary'?'block':'none';
+  if (cards) {
+    cards.style.display = tab==='cards'?'block':'none';
+    if (tab==='cards') renderCardsMonitor();
+  }
+}
+
+async function renderCardsMonitor() {
+  const el = document.getElementById('cards-monitor-content');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Загрузка карт...</div>';
+
+  try {
+    // Load all visit cards from Supabase
+    let allCards = [], offset = 0;
+    while(true) {
+      const batch = await sbGet('visit_cards', `select=visit_id,client_name,doctor_name,visit_date,complaints,anamnesis,objective_state,manipulations,dynamics,recommendations&limit=1000&offset=${offset}&order=visit_date.desc`);
+      if (!batch.length) break;
+      allCards.push(...batch);
+      offset += batch.length;
+      if (batch.length < 1000) break;
+    }
+
+    const cardMap = {};
+    allCards.forEach(c => { cardMap[c.visit_id] = c; });
+
+    // Check finished visits from journal
+    const finished = all.filter(a => a.status === 'finished');
+    if (!finished.length) {
+      el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Загрузите данные в журнале</div>';
+      return;
+    }
+
+    // Filter controls
+    const doctors = [...new Set(finished.map(a => a._empName).filter(Boolean))].sort();
+    let filterDoc = el.dataset.filterDoc || '';
+    let filterStatus = el.dataset.filterStatus || 'all';
+
+    const FIELDS = ['complaints','anamnesis','objective_state','manipulations','dynamics','recommendations'];
+
+    const isCardFilled = card => card && FIELDS.some(f => card[f] && card[f].trim());
+    const isCardComplete = card => card && FIELDS.every(f => card[f] && card[f].trim());
+
+    let filtered = [...finished].sort((a,b) => (b.start_datetime||'').localeCompare(a.start_datetime||''));
+    if (filterDoc) filtered = filtered.filter(a => a._empName === filterDoc);
+    if (filterStatus === 'empty') filtered = filtered.filter(a => !isCardFilled(cardMap[a.id]));
+    if (filterStatus === 'partial') filtered = filtered.filter(a => isCardFilled(cardMap[a.id]) && !isCardComplete(cardMap[a.id]));
+    if (filterStatus === 'filled') filtered = filtered.filter(a => isCardComplete(cardMap[a.id]));
+
+    // Stats
+    const total = finished.length;
+    const filled = finished.filter(a => isCardComplete(cardMap[a.id])).length;
+    const partial = finished.filter(a => isCardFilled(cardMap[a.id]) && !isCardComplete(cardMap[a.id])).length;
+    const empty = total - filled - partial;
+
+    el.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <select onchange="document.getElementById('cards-monitor-content').dataset.filterDoc=this.value;renderCardsMonitor()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:12px">
+          <option value="">Все врачи</option>
+          ${doctors.map(d => `<option value="${esc(d)}" ${d===filterDoc?'selected':''}>${esc(d)}</option>`).join('')}
+        </select>
+        <button onclick="document.getElementById('cards-monitor-content').dataset.filterStatus='all';renderCardsMonitor()" style="background:${filterStatus==='all'?'var(--accent)':'var(--surface2)'};border:${filterStatus==='all'?'none':'1px solid var(--border)'};border-radius:7px;padding:6px 12px;color:${filterStatus==='all'?'#fff':'var(--text2)'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">Все (${total})</button>
+        <button onclick="document.getElementById('cards-monitor-content').dataset.filterStatus='empty';renderCardsMonitor()" style="background:${filterStatus==='empty'?'var(--danger)':'var(--surface2)'};border:${filterStatus==='empty'?'none':'1px solid var(--border)'};border-radius:7px;padding:6px 12px;color:${filterStatus==='empty'?'#fff':'var(--danger)'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">❌ Не заполнены (${empty})</button>
+        <button onclick="document.getElementById('cards-monitor-content').dataset.filterStatus='partial';renderCardsMonitor()" style="background:${filterStatus==='partial'?'var(--warn)':'var(--surface2)'};border:${filterStatus==='partial'?'none':'1px solid var(--border)'};border-radius:7px;padding:6px 12px;color:${filterStatus==='partial'?'#fff':'var(--warn)'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">⚠️ Частично (${partial})</button>
+        <button onclick="document.getElementById('cards-monitor-content').dataset.filterStatus='filled';renderCardsMonitor()" style="background:${filterStatus==='filled'?'var(--success)':'var(--surface2)'};border:${filterStatus==='filled'?'none':'1px solid var(--border)'};border-radius:7px;padding:6px 12px;color:${filterStatus==='filled'?'#fff':'var(--success)'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">✅ Заполнены (${filled})</button>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            ${['Пациент','Врач','Дата','Карта','Поля'].map(h =>
+              `<th style="padding:9px 12px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${h}</th>`
+            ).join('')}
+          </tr></thead>
+          <tbody>
+            ${filtered.slice(0,200).map(a => {
+              const card = cardMap[a.id];
+              const complete = isCardComplete(card);
+              const partial2 = isCardFilled(card) && !complete;
+              const isEmpty = !isCardFilled(card);
+              const bg = isEmpty ? 'background:rgba(240,92,92,0.06)' : partial2 ? 'background:rgba(245,166,35,0.06)' : '';
+              const statusIcon = isEmpty ? '❌' : partial2 ? '⚠️' : '✅';
+              const statusColor = isEmpty ? 'var(--danger)' : partial2 ? 'var(--warn)' : 'var(--success)';
+              const dt = a.start_datetime ? a.start_datetime.slice(0,10).split('-').reverse().join('.')+' '+a.start_datetime.slice(11,16) : '—';
+              const filledFields = card ? FIELDS.filter(f => card[f]?.trim()).length : 0;
+              const aIdx = all.indexOf(a);
+
+              const visitDate = a.start_datetime ? a.start_datetime.slice(0,10).split('-').reverse().join('.') : '';
+              return `<tr style="border-bottom:1px solid var(--border);${bg};cursor:pointer" onclick="openVisitCardAdmin(${a.id},'${esc(a.client_name||'').replace(/'/g,"\'")}','${esc(a._empName||'').replace(/'/g,"\'")}','${visitDate}')"
+                onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                <td style="padding:9px 12px;font-weight:${isEmpty?'600':'400'};color:${isEmpty?'var(--danger)':'var(--accent)'}">${esc(a.client_name||'—')}</td>
+                <td style="padding:9px 12px;font-size:12px;color:var(--text2)">${esc(a._empName||'—')}</td>
+                <td style="padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:12px">${dt}</td>
+                <td style="padding:9px 12px;color:${statusColor};font-size:16px">${statusIcon}</td>
+                <td style="padding:9px 12px;font-size:12px;color:var(--muted)">${card ? filledFields+'/'+FIELDS.length : '0/'+FIELDS.length}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        ${filtered.length > 200 ? `<div style="padding:10px;text-align:center;font-size:12px;color:var(--muted)">Показано 200 из ${filtered.length}</div>` : ''}
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = `<div style="padding:20px;color:var(--danger)">Ошибка: ${e.message}</div>`;
+  }
+}
+
+async function openVisitCardAdmin(visitId, clientName, doctorName, visitDate) {
+  document.getElementById('vc-title').textContent = clientName || '—';
+  document.getElementById('vc-subtitle').textContent = [visitDate, doctorName].filter(Boolean).join(' · ');
+  document.getElementById('vc-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Загрузка...</div>';
+  document.getElementById('vc-modal').style.display = 'flex';
+
+  try {
+    const data = await sbGet('visit_cards', `visit_id=eq.${visitId}`);
+    const card = data[0];
+    const FIELD_LABELS = {
+      complaints: 'Жалобы',
+      anamnesis: 'Анамнез',
+      objective_state: 'Объективное состояние',
+      manipulations: 'Манипуляции',
+      dynamics: 'Динамика',
+      recommendations: 'Рекомендации',
+    };
+    if (!card) {
+      document.getElementById('vc-body').innerHTML = '<div style="color:var(--danger);text-align:center;padding:30px;font-size:14px">❌ Карта не заполнена</div>';
+      return;
+    }
+    const updatedAt = card.updated_at ? new Date(card.updated_at).toLocaleString('ru', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    document.getElementById('vc-body').innerHTML = `
+      ${updatedAt ? `<div style="font-size:11px;color:var(--muted);margin-bottom:16px">Последнее изменение: ${updatedAt}</div>` : ''}
+      ${Object.entries(FIELD_LABELS).map(([key, label]) => {
+        const val = card[key];
+        const empty = !val || !val.trim();
+        return `<div style="margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;color:${empty?'var(--danger)':'var(--muted)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${label} ${empty?'⚠️ не заполнено':''}</div>
+          <div style="background:${empty?'rgba(240,92,92,0.06)':'var(--surface2)'};border:1px solid ${empty?'rgba(240,92,92,0.3)':'var(--border)'};border-radius:8px;padding:10px 12px;font-size:13px;color:${empty?'var(--muted)':'var(--text)'};min-height:36px;white-space:pre-wrap">${empty?'—':esc(val)}</div>
+        </div>`;
+      }).join('')}
+    `;
+  } catch(e) {
+    document.getElementById('vc-body').innerHTML = `<div style="color:var(--danger);padding:20px">Ошибка: ${e.message}</div>`;
+  }
+}
+
+// ── PRIMARY TAB ──
+function renderPrimary() {
+  const body = document.getElementById('primary-body');
+  if (!all.length) {
+    body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Загрузите данные во вкладке «Журнал записей»</div>';
+    return;
+  }
+
+  const finished = all.filter(a => a.status === 'finished');
+  const todayStr = fmt(new Date());
+
+  // Find all primary visits using firstVisitsMap
+  const primaryVisits = finished.filter(a => {
+    const dt = (a.start_datetime||'').slice(0,10);
+    if (firstVisitsMap[a.client_id]) return firstVisitsMap[a.client_id] === dt;
+    // fallback
+    const clientVisits = finished.filter(x => x.client_id === a.client_id);
+    return clientVisits.map(x => (x.start_datetime||'').slice(0,10)).sort()[0] === dt;
+  });
+
+  // Monthly totals
+  const months = [...new Set(finished.map(a => (a.start_datetime||'').slice(0,7)))].sort().slice(-12);
+  const MONTHS_RU = {1:'янв',2:'фев',3:'мар',4:'апр',5:'май',6:'июн',7:'июл',8:'авг',9:'сен',10:'окт',11:'ноя',12:'дек'};
+  const mLabel = m => MONTHS_RU[parseInt(m.slice(5))] + ' ' + m.slice(2,4);
+
+  // Primary by month
+  const primByMonth = {};
+  const totalByMonth = {};
+  months.forEach(m => { primByMonth[m] = 0; totalByMonth[m] = 0; });
+  primaryVisits.forEach(a => {
+    const m = (a.start_datetime||'').slice(0,7);
+    if (primByMonth[m] !== undefined) primByMonth[m]++;
+  });
+  finished.forEach(a => {
+    const m = (a.start_datetime||'').slice(0,7);
+    if (totalByMonth[m] !== undefined) totalByMonth[m]++;
+  });
+
+  // Primary by doctor
+  const primByDoctor = {};
+  const totalByDoctor = {};
+  primaryVisits.forEach(a => {
+    const name = a._empName || '—';
+    primByDoctor[name] = (primByDoctor[name]||0) + 1;
+  });
+  finished.forEach(a => {
+    const name = a._empName || '—';
+    totalByDoctor[name] = (totalByDoctor[name]||0) + 1;
+  });
+
+  const doctorRows = Object.entries(primByDoctor)
+    .sort((a,b) => b[1]-a[1])
+    .map(([name, cnt]) => {
+      const total = totalByDoctor[name] || 0;
+      const pct = total > 0 ? Math.round(cnt/total*100) : 0;
+      const COLORS = ['#4f8ef7','#7c6af5','#34c77b','#f5a623','#f05c5c'];
+      const color = COLORS[Object.keys(primByDoctor).sort().indexOf(name) % COLORS.length];
+      const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+      return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="showPrimPatients('${esc(name).replace(/'/g,"\'")}')">
+        <td style="padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${initials}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--accent)">${esc(name)}</div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--accent)">${cnt}</td>
+        <td style="padding:10px 12px;text-align:right;font-size:12px;color:var(--text2)">${total}</td>
+        <td style="padding:10px 12px;text-align:right">
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+            <div style="background:var(--surface2);border-radius:4px;height:6px;width:80px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px"></div>
+            </div>
+            <span style="font-size:12px;color:var(--accent);font-weight:600">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+  // Bar chart
+  const maxPrim = Math.max(...months.map(m => primByMonth[m]||0), 1);
+  const chartBars = months.map(m => {
+    const p = primByMonth[m]||0;
+    const t = totalByMonth[m]||0;
+    const h = Math.round(p/maxPrim*70);
+    const pct = t > 0 ? Math.round(p/t*100) : 0;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div style="font-size:9px;color:var(--muted)">${p||''}</div>
+      <div style="width:100%;background:var(--accent);border-radius:3px 3px 0 0;height:${h}px;min-height:${p>0?3:0}px" title="${mLabel(m)}: ${p} первичных (${pct}%)"></div>
+      <div style="font-size:9px;color:var(--muted);white-space:nowrap">${mLabel(m)}</div>
+      <div style="font-size:8px;color:var(--muted)">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  // Total stats
+  const totalPrimary = primaryVisits.length;
+  const totalFinished = finished.length;
+  const primShare = totalFinished > 0 ? Math.round(totalPrimary/totalFinished*100) : 0;
+
+  // Current month
+  const curMonth = todayStr.slice(0,7);
+  const curPrim = primByMonth[curMonth]||0;
+  const curTotal = totalByMonth[curMonth]||0;
+  const curPct = curTotal > 0 ? Math.round(curPrim/curTotal*100) : 0;
+
+  // Avg primary per month (last 6)
+  const last6 = months.slice(-6);
+  const avgPrim = Math.round(last6.reduce((s,m) => s+(primByMonth[m]||0), 0) / last6.length);
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:700">🆕 Первичные пациенты</div>
+      <div style="font-size:12px;color:var(--muted)">${Object.keys(firstVisitsMap).length > 0 ? '✓ Данные синхронизированы' : '⚠️ Синхронизируйте историю'}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button onclick="showPrimaryTab('primary')" id="ptab-primary" style="background:var(--accent);border:none;border-radius:7px;padding:7px 14px;color:#fff;font-family:'Onest',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🆕 Первичные</button>
+      <button onclick="showPrimaryTab('cards')" id="ptab-cards" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">📋 Карты приёма</button>
+      <button onclick="syncFirstVisits()" id="sync-fv-btn" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;color:var(--text2);font-family:'Onest',sans-serif;font-size:12px;cursor:pointer" title="Загрузить историю с 2016 года">🔄 Синхронизировать историю</button>
+    </div>
+
+    <div id="primary-tab-content">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Всего первичных</div>
+        <div style="font-size:26px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">${totalPrimary.toLocaleString('ru')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${primShare}% от всех визитов</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Текущий месяц</div>
+        <div style="font-size:26px;font-weight:700;color:var(--success);font-family:'JetBrains Mono',monospace">${curPrim}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${curPct}% от визитов месяца</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:120px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Среднее в мес</div>
+        <div style="font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace">${avgPrim}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">за последние 6 мес</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:12px">Первичные по месяцам (% от всех)</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:90px">
+        ${chartBars}
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px">По врачам</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:10px 12px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Врач</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Первичных</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Всего визитов</th>
+            <th style="padding:10px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Доля</th>
+          </tr>
+        </thead>
+        <tbody>${doctorRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function showPrimPatients(doctorName) {
+  const finished = all.filter(a => a.status === 'finished');
+
+  const primVisits = finished.filter(a => {
+    if ((a._empName||'—') !== doctorName) return false;
+    const dt = (a.start_datetime||'').slice(0,10);
+    if (firstVisitsMap[a.client_id]) return firstVisitsMap[a.client_id] === dt;
+    const clientVisits = finished.filter(x => x.client_id === a.client_id);
+    return clientVisits.map(x => (x.start_datetime||'').slice(0,10)).sort()[0] === dt;
+  }).sort((a,b) => (b.start_datetime||'').localeCompare(a.start_datetime||''));
+
+  document.getElementById('prim-modal-title').textContent = doctorName;
+  document.getElementById('prim-modal-sub').textContent = `${primVisits.length} первичных пациентов`;
+
+  const aIdx = i => all.indexOf(primVisits[i]);
+  const todayFull = fmt(new Date());
+  document.getElementById('prim-modal-body').innerHTML = primVisits.map((a, i) => {
+    const dt = (a.start_datetime||'').slice(0,10).split('-').reverse().join('.');
+    const price = parseFloat(a.price||0);
+    const idx = all.indexOf(a);
+    // Check if client has future scheduled visit
+    const hasNext = all.some(x =>
+      x.client_id === a.client_id &&
+      (x.status === 'scheduled' || x.status === 'confirmed') &&
+      (x.start_datetime||'').slice(0,10) > todayFull
+    );
+    const rowBg = hasNext ? '' : 'background:rgba(240,92,92,0.08)';
+    const nameColor = hasNext ? '' : 'color:var(--danger)';
+    const badge = hasNext ? '' : '<span style="font-size:10px;background:rgba(240,92,92,0.15);color:var(--danger);border-radius:4px;padding:1px 5px;margin-left:6px">не записан</span>';
+    return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}" onclick="closePrimModal();showClientCard(${idx})" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+      <td style="padding:9px 16px;font-weight:600;${nameColor}">${esc(a.client_name||'—')}${badge}</td>
+      <td style="padding:9px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${esc(a.client_phone||'—')}</td>
+      <td style="padding:9px 16px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${dt}</td>
+      <td style="padding:9px 16px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--success);font-weight:600">${price>0?price.toLocaleString('ru')+' ₽':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('prim-modal').style.display = 'flex';
+}
+
+function closePrimModal() {
+  document.getElementById('prim-modal').style.display = 'none';
 }
 
 // ── FORECAST ──
@@ -2020,9 +2753,1125 @@ function renderForecast() {
   `;
 }
 
+
+
+
+// ── BUSINESS PROCESSES ──
+const BP_DATA = [
+  {
+    id: 1, icon: '📣', color: '#4f8ef7',
+    title: 'БП 1 — Привлечение и запись пациента',
+    subtitle: 'Маркетинг → Запись → Подтверждение',
+    roles: ['Дир. по развитию', 'Ресепшен', 'Гл. администратор', 'МИС (авто)'],
+    steps: [
+      {type:'action', role:'Маркетинг', text:'SMM, таргет, сайт, отзывы'},
+      {type:'action', role:'Пациент', text:'Обращается через сайт / телефон / WhatsApp'},
+      {type:'action', role:'Ресепшен', text:'Принимает контакт — уточняет запрос, отделение, врача'},
+      {type:'decision', text:'Есть свободное время?', yes:'Запись в МИС', no:'Лист ожидания'},
+      {type:'action', role:'МИС (авто)', text:'Подтверждение пациенту: SMS/WhatsApp — дата, время, врач'},
+      {type:'action', role:'МИС (авто)', text:'Напоминание за 24 часа'},
+      {type:'decision', text:'Пациент подтвердил?', yes:'Запись подтверждена ✓', no:'Ресепшен перезванивает / переносит'},
+    ],
+    metrics: [
+      {freq:'Ежедневно 19:00', who:'Ресепшен', what:'Кол-во записей, no-show, отмены, инциденты'},
+      {freq:'Пятница', who:'Гл. администратор', what:'Конверсия обращений в запись (цель ≥ 70%)'},
+      {freq:'Ежемесячно', who:'Гл. администратор', what:'Оценка качества звонков (цель ≥ 7/10)'},
+    ],
+    alerts: ['Конверсия < 60% → прослушать звонки', 'Пропущенный звонок без перезвона → перезвон в течение 30 мин'],
+  },
+  {
+    id: 2, icon: '🏥', color: '#34c77b',
+    title: 'БП 2 — Первичный приём пациента',
+    subtitle: 'От встречи на ресепшен до плана лечения',
+    roles: ['Ресепшен', 'Врач', 'Рук. отделения', 'Гл. врач', 'МИС (авто)'],
+    steps: [
+      {type:'action', role:'Ресепшен', text:'Встречает пациента, проверяет запись, выдаёт анкету и ИДС'},
+      {type:'action', role:'Пациент', text:'Заполняет анкету — жалобы, анамнез, согласие на лечение'},
+      {type:'action', role:'Врач', text:'Проводит приём — анамнез, осмотр, диагностика'},
+      {type:'decision', text:'Нужна доп. консультация?', yes:'Согласование с гл. доктором', no:''},
+      {type:'action', role:'Врач', text:'Диагноз и план лечения — правило 3 вариантов: мин / оптимум / макс'},
+      {type:'highlight', text:'⚡ Врач заполняет карту в МИС и сразу вносит СЛЕДУЮЩИЙ ВИЗИТ — без дублирования'},
+      {type:'action', role:'Ресепшен', text:'Провожает пациента — подтверждает след. визит (из МИС), оплата'},
+      {type:'action', role:'МИС (авто)', text:'Отправляет напоминание за 24 ч до следующего визита'},
+    ],
+    metrics: [
+      {freq:'Ежедневно 19:00', who:'Ресепшен', what:'Кол-во первичных приёмов, no-show'},
+      {freq:'Пятница', who:'Рук. отделения', what:'Жалобы, сложные случаи'},
+      {freq:'Ежемесячно', who:'Гл. врач', what:'Аудит карт — заполнены ли план лечения и след. визит'},
+    ],
+    alerts: ['Пациент вышел без записи на след. визит → разбор с врачом'],
+  },
+  {
+    id: 3, icon: '🔄', color: '#7c6af5',
+    title: 'БП 3 — Повторный приём и ведение пациента',
+    subtitle: 'От напоминания до завершения курса лечения',
+    roles: ['Ресепшен', 'Врач', 'Гл. администратор', 'МИС (авто)'],
+    steps: [
+      {type:'action', role:'МИС (авто)', text:'Отправляет напоминание SMS/WhatsApp за 24 ч — врач и ресепшен не звонят'},
+      {type:'decision', text:'Пациент подтвердил?', yes:'', no:'Ресепшен перезванивает → если нет — БП 4'},
+      {type:'action', role:'Ресепшен', text:'Встречает пациента, называет по имени, сообщает о враче'},
+      {type:'action', role:'Врач', text:'Открывает карту в МИС — повторяет план лечения и пред. визиты'},
+      {type:'action', role:'Врач', text:'Проводит приём / процедуру по плану лечения'},
+      {type:'decision', text:'План лечения завершён?', yes:'Врач закрывает план в МИС — результат, рекомендации', no:'Врач вносит следующий визит в МИС'},
+      {type:'action', role:'Ресепшен', text:'Провожает пациента — оплата, подтверждение след. визита'},
+    ],
+    metrics: [
+      {freq:'Еженедельно', who:'Гл. администратор', what:'% пациентов с записью после визита (цель ≥ 60%)'},
+    ],
+    alerts: ['Пациент не пришёл на 2-й визит подряд → гл. администратор запускает БП 4'],
+  },
+  {
+    id: 4, icon: '🔙', color: '#f5a623',
+    title: 'БП 4 — Возврат потерянных пациентов',
+    subtitle: 'Только гл. администратор — врачи не звонят',
+    roles: ['Гл. администратор', 'Ресепшен', 'МИС (авто)'],
+    steps: [
+      {type:'action', role:'МИС', text:'Ежемесячная выгрузка — пациенты без визита > 90 дней'},
+      {type:'action', role:'Гл. администратор', text:'Сегментирует базу по давности, отделению, причине ухода'},
+      {type:'decision', text:'Давность отсутствия?', yes:'1–3 мес → WhatsApp/SMS', no:'> 3 мес → Звонок ресепшен'},
+      {type:'action', role:'Ресепшен', text:'Контакт по скрипту: «Заметили, что вас давно не было...»'},
+      {type:'decision', text:'Пациент согласен записаться?', yes:'Ресепшен записывает в МИС (источник: «возврат»)', no:'Фиксирует причину в МИС → Архив'},
+    ],
+    metrics: [
+      {freq:'Ежемесячно', who:'Гл. администратор', what:'Обзвонено ___ / записалось ___ / отказ ___ (цель конверсии ≥ 20%)'},
+    ],
+    alerts: ['База потерянных растёт быстрее чем конвертируется → проблема в БП 2 или 3'],
+  },
+  {
+    id: 5, icon: '↔️', color: '#45d4fa',
+    title: 'БП 5 — Перенаправление между отделениями',
+    subtitle: 'Вознаграждение 5% от чека направившему врачу',
+    roles: ['Врач', 'Ресепшен', 'Рук. отделения', 'Фин. директор', 'МИС'],
+    steps: [
+      {type:'decision', text:'Выявил показания для другого отделения?', yes:'', no:'Приём продолжается'},
+      {type:'action', role:'Врач', text:'Объясняет пациенту зачем нужен другой специалист'},
+      {type:'highlight', text:'⚡ Врач вносит направление в МИС — поле «направил врач» обязательно, иначе 5% нет'},
+      {type:'decision', text:'Пациент согласен?', yes:'Ресепшен записывает (источник: «перенаправление»)', no:'Фиксирует отказ в карте'},
+      {type:'action', role:'Фин. директор', text:'Начисляет 5% от чека направившему врачу — ежемесячно'},
+    ],
+    metrics: [
+      {freq:'Пятница', who:'Рук. отделения', what:'Кол-во перенаправлений за неделю'},
+      {freq:'До 5-го числа', who:'Фин. директор', what:'Сумма начисленных 5%, список врачей и чеков'},
+    ],
+    alerts: ['Поле «направил врач» не заполнено → 5% не начислить, разбор', 'Перенаправлений 0 за месяц → врачи не знают регламент или не мотивированы'],
+  },
+  {
+    id: 6, icon: '🚫', color: '#f05c5c',
+    title: 'БП 6 — Отказ от пациента',
+    subtitle: 'Только письменно — устный отказ не защищает клинику',
+    roles: ['Врач', 'Рук. отделения', 'Гл. врач', 'Ресепшен'],
+    steps: [
+      {type:'highlight', text:'⚠️ Устный отказ не считается — только письменно с указанием причины'},
+      {type:'action', role:'Врач', text:'Письменно уведомляет рук. отделения — причина отказа'},
+      {type:'action', role:'Рук. отделения', text:'Рассматривает в течение 24 ч'},
+      {type:'decision', text:'Причина медицинская?', yes:'Гл. врач проверяет обоснованность', no:''},
+      {type:'decision', text:'Отказ обоснован?', yes:'Рук. уведомляет директора', no:'Рук. отклоняет, разбор с врачом'},
+      {type:'action', role:'Ресепшен', text:'Маршрутизирует пациента — другой врач клиники / другое учреждение'},
+      {type:'action', role:'Ресепшен', text:'Фиксирует в МИС — отказ, причина, куда направлен пациент'},
+    ],
+    metrics: [
+      {freq:'По событию', who:'Рук. отделения', what:'Сообщение директору сразу после каждого отказа'},
+      {freq:'Ежемесячно', who:'Гл. врач', what:'Кол-во отказов, причины, все ли обоснованы'},
+    ],
+    alerts: ['Отказ без письменной фиксации или без маршрутизации пациента → нарушение регламента'],
+  },
+  {
+    id: 7, icon: '👨‍⚕️', color: '#a3d977',
+    title: 'БП 7 — Найм врача',
+    subtitle: 'От заявки до выхода на работу (цель ≤ 3 недель)',
+    roles: ['Рук. отделения', 'Дир. по развитию', 'Фин. директор', 'Гл. врач'],
+    steps: [
+      {type:'action', role:'Рук. отделения', text:'Подаёт письменную заявку — специализация, опыт, условия, срок'},
+      {type:'action', role:'Дир. по развитию', text:'Согласовывает бюджет и условия'},
+      {type:'action', role:'Фин. директор', text:'Подтверждает бюджет — ставка, условия оплаты'},
+      {type:'action', role:'Дир. по развитию', text:'Размещает вакансию — hh.ru, профсообщества, соцсети'},
+      {type:'action', role:'Дир. по развитию', text:'Первичное интервью 15 мин'},
+      {type:'action', role:'Рук. отделения', text:'Проф. интервью 30–40 мин — клинические кейсы, методики'},
+      {type:'action', role:'Гл. врач', text:'Проверяет документы — сертификаты, лицензии, стаж'},
+      {type:'action', role:'Фин. директор', text:'Оформляет — договор, доступ в МИС, расписание'},
+      {type:'action', role:'Рук. отделения', text:'Ведёт адаптацию 2 недели — команда, протоколы, МИС'},
+    ],
+    metrics: [
+      {freq:'По событию', who:'Дир. по развитию', what:'Статус найма — от открытия вакансии до выхода ≤ 3 недель'},
+      {freq:'Пятница (2 нед)', who:'Рук. отделения', what:'Пульс по новому врачу'},
+    ],
+    alerts: [],
+  },
+  {
+    id: 8, icon: '📦', color: '#f06292',
+    title: 'БП 8 — Закупки и склад',
+    subtitle: 'Единый день — понедельник. Один пакет фин. директору',
+    roles: ['Гл. адм. стоматологии', 'Гл. администратор', 'Фин. директор'],
+    steps: [
+      {type:'action', role:'Гл. адм. стоматологии', text:'Мониторинг остатков стомат. материалов'},
+      {type:'action', role:'Гл. администратор', text:'Расходники общих зон клиники'},
+      {type:'highlight', text:'⚡ Единый день: все заявки к понедельнику — наименование, кол-во, поставщик, срок'},
+      {type:'action', role:'Гл. администратор', text:'Собирает единый пакет всех заявок'},
+      {type:'action', role:'Фин. директор', text:'Согласовывает — проверяет бюджет, одобряет пакет'},
+      {type:'action', role:'Поставщик', text:'Размещение заказа → приёмка товара с проверкой качества'},
+      {type:'action', role:'МИС', text:'Обновление остатков, отчёт фин. директору до 3-го числа'},
+    ],
+    metrics: [
+      {freq:'До 3-го числа', who:'Фин. директор', what:'Отчёт по закупкам — что закупили, сумма, остатки'},
+    ],
+    alerts: ['Закончился материал → нарушение минимального уровня, разбор причины'],
+  },
+  {
+    id: 9, icon: '😤', color: '#ff8a65',
+    title: 'БП 9 — Работа с жалобой пациента',
+    subtitle: 'Жалоба → разбор → ответ → закрытие → системное улучшение',
+    roles: ['Ресепшен', 'Рук. отделения', 'Гл. врач', 'Дир. по развитию'],
+    steps: [
+      {type:'action', role:'Ресепшен', text:'Выслушивает и фиксирует — имя, суть, дата. НЕ решает, только передаёт'},
+      {type:'action', role:'Рук. отделения', text:'В течение 4 ч связывается с пациентом, заполняет форму'},
+      {type:'action', role:'Рук. отделения', text:'Уведомляет директора — кто, что, статус'},
+      {type:'decision', text:'Медицинская составляющая?', yes:'Гл. врач: заключение', no:''},
+      {type:'action', role:'Рук. отделения', text:'Разбор с обеими сторонами — решение: извинения / повторный приём / компенсация'},
+      {type:'action', role:'Рук. отделения', text:'Ответ пациенту — звонок или встреча в течение 24 ч от жалобы'},
+      {type:'action', role:'МИС', text:'Жалоба закрыта — статус, итог, категория, дата (не позднее 48 ч)'},
+    ],
+    metrics: [
+      {freq:'По событию', who:'Рук. отделения', what:'Уведомление директору сразу'},
+      {freq:'Ежемесячно', who:'Гл. врач', what:'Кол-во жалоб, категории, все ли закрыты в срок'},
+    ],
+    alerts: ['Жалоба не закрыта за 48 ч → директор подключается немедленно', '3+ жалобы на одного врача за месяц → разбор с гл. врачом на планёрке'],
+  },
+];
+
+function renderBP() {
+  const el = document.getElementById('bp-cards');
+  if (!el) return;
+  el.innerHTML = BP_DATA.map(bp => `
+    <div onclick="openBP(${bp.id})" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${bp.color};border-radius:12px;padding:16px;cursor:pointer;transition:all .2s"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,0.2)'"
+      onmouseout="this.style.transform='';this.style.boxShadow=''">
+      <div style="font-size:28px;margin-bottom:8px">${bp.icon}</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;line-height:1.3">${esc(bp.title)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${esc(bp.subtitle)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${bp.roles.map(r => `<span style="font-size:10px;background:${bp.color}18;color:${bp.color};border:1px solid ${bp.color}33;border-radius:4px;padding:1px 7px">${esc(r)}</span>`).join('')}
+      </div>
+    </div>`
+  ).join('');
+}
+
+function openBP(id) {
+  const bp = BP_DATA.find(b => b.id === id);
+  if (!bp) return;
+  document.getElementById('bp-modal-title').innerHTML = `<span style="margin-right:10px">${bp.icon}</span>${esc(bp.title)}`;
+
+  const stepHtml = bp.steps.map(s => {
+    if (s.type === 'highlight') return `<div style="background:${bp.color}15;border:1px solid ${bp.color}44;border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;font-weight:600;color:${bp.color}">${esc(s.text)}</div>`;
+    if (s.type === 'decision') return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px">
+      <div style="font-weight:600;margin-bottom:6px">🔀 ${esc(s.text)}</div>
+      <div style="display:flex;gap:12px;font-size:12px">
+        ${s.yes?`<div style="color:var(--success)">✓ Да: ${esc(s.yes)}</div>`:''}
+        ${s.no?`<div style="color:var(--danger)">✗ Нет: ${esc(s.no)}</div>`:''}
+      </div>
+    </div>`;
+    return `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="width:6px;height:6px;border-radius:50%;background:${bp.color};margin-top:6px;flex-shrink:0"></div>
+      <div>
+        ${s.role?`<span style="font-size:10px;background:${bp.color}18;color:${bp.color};border-radius:4px;padding:1px 7px;margin-right:6px">${esc(s.role)}</span>`:''}
+        <span style="font-size:13px">${esc(s.text)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const metricsHtml = bp.metrics.length ? `
+    <div style="margin-top:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📊 Пульс контроля</div>
+      ${bp.metrics.map(m => `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="font-weight:600;color:var(--accent);min-width:120px;flex-shrink:0">${esc(m.freq)}</div>
+        <div><span style="color:var(--text2)">${esc(m.who)}:</span> ${esc(m.what)}</div>
+      </div>`).join('')}
+    </div>` : '';
+
+  const alertsHtml = bp.alerts.length ? `
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🚨 Сигналы тревоги</div>
+      ${bp.alerts.map(a => `<div style="background:rgba(240,92,92,0.08);border:1px solid rgba(240,92,92,0.3);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--danger);margin-bottom:6px">⚠️ ${esc(a)}</div>`).join('')}
+    </div>` : '';
+
+  document.getElementById('bp-modal-body').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">${esc(bp.subtitle)}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📌 Шаги процесса</div>
+    ${stepHtml}
+    ${metricsHtml}
+    ${alertsHtml}
+  `;
+  document.getElementById('bp-modal').style.display = 'flex';
+}
+
+// Also add pulse summary tab
+
+// ── PULSE CONTROL ──
+let pulseDate = fmt(new Date());
+let pulseReports = {};
+
+function setPulseToday() {
+  pulseDate = fmt(new Date());
+  document.getElementById('pulse-date').value = pulseDate;
+  loadPulseDay();
+}
+
+async function initPulse() {
+  if (!document.getElementById('pulse-date').value) {
+    document.getElementById('pulse-date').value = fmt(new Date());
+    pulseDate = fmt(new Date());
+  }
+  await loadPulseDay();
+}
+
+async function loadPulseDay() {
+  pulseDate = document.getElementById('pulse-date').value || fmt(new Date());
+  try {
+    const data = await sbGet('pulse_reports', `report_date=eq.${pulseDate}&order=role.asc`);
+    pulseReports = {};
+    data.forEach(r => { pulseReports[r.role] = r; });
+  } catch(e) { console.log('Pulse load error:', e.message); }
+  renderPulseAuto();
+  renderPulseManual();
+}
+
+function renderPulseAuto() {
+  const autoEl = document.getElementById('pulse-auto');
+  const signalEl = document.getElementById('pulse-signals');
+  const nextEl = document.getElementById('pulse-next-visit');
+  const todayStr = pulseDate;
+
+  // From journal data
+  const todayAll = all.filter(a => (a.start_datetime||'').slice(0,10) === todayStr);
+  const todayFinished = todayAll.filter(a => a.status === 'finished');
+  const todayCancelled = todayAll.filter(a => a.status === 'cancelled' || a.status === 'cancelled_by_sms');
+  const revenue = todayFinished.reduce((s,a) => s+parseFloat(a.price||0), 0);
+  const cancelRate = todayAll.length > 0 ? Math.round(todayCancelled.length/todayAll.length*100) : 0;
+
+  // No-show from manual pulse
+  const receptionPulse = pulseReports['reception']?.data || {};
+  const noShow = receptionPulse.no_show || 0;
+  const incidents = receptionPulse.incidents;
+
+  // % next visit by doctor (from journal - clients who have future scheduled visit)
+  const finished = all.filter(a => a.status === 'finished');
+  const empStats = {};
+  const todayEmpVisits = {};
+  // Deduplicate by client per doctor — count unique clients
+  const seenClientPerDoc = {};
+  finished.forEach(a => {
+    const name = a._empName || '—';
+    if (name === '—') return;
+    const key = name + '|' + a.client_id;
+    if (seenClientPerDoc[key]) return; // already counted this client for this doctor
+    seenClientPerDoc[key] = true;
+    if (!empStats[name]) empStats[name] = {total:0, withNext:0};
+    empStats[name].total++;
+    const hasNext = futureClientIds.has(a.client_id) || all.some(x =>
+      x.client_id === a.client_id &&
+      (x.status === 'scheduled' || x.status === 'confirmed') &&
+      (x.start_datetime||'') > (a.start_datetime||'')
+    );
+    if (hasNext) empStats[name].withNext++;
+  });
+
+  // Auto cards
+  const cards = [
+    {label:'Записей', value: todayAll.length, color:'var(--accent)'},
+    {label:'Завершено', value: todayFinished.length, color:'var(--success)'},
+    {label:'Отмены', value: todayCancelled.length, sub: cancelRate+'%', color: cancelRate > 20 ? 'var(--danger)' : 'var(--warn)'},
+    {label:'No-show', value: noShow, color: noShow > 0 ? 'var(--danger)' : 'var(--success)', manual: true},
+    {label:'Выручка', value: revenue.toLocaleString('ru')+' ₽', color:'var(--success)'},
+    {label:'Инциденты', value: incidents === undefined ? '—' : (incidents ? '⚠️ Да' : '✓ Нет'), color: incidents ? 'var(--danger)' : 'var(--success)', manual: true},
+  ];
+
+  autoEl.innerHTML = cards.map(c => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;position:relative">
+      ${c.manual ? '<div style="position:absolute;top:6px;right:8px;font-size:9px;color:var(--muted)">✏️</div>' : ''}
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${c.label}</div>
+      <div style="font-size:20px;font-weight:700;color:${c.color};font-family:'JetBrains Mono',monospace">${c.value}</div>
+      ${c.sub ? `<div style="font-size:11px;color:var(--muted)">${c.sub}</div>` : ''}
+    </div>`).join('');
+
+  // Signals
+  const signals = [];
+  if (cancelRate > 20) signals.push({level:'red', text:`Отмены ${cancelRate}% — выше нормы 20%`});
+  if (noShow > 3) signals.push({level:'red', text:`No-show ${noShow} — проверьте напоминания`});
+  if (incidents) signals.push({level:'red', text:'Инцидент зафиксирован — уточните статус у рук. отделения'});
+
+  // Check next visit %
+  const lowNextVisit = Object.entries(empStats)
+    .filter(([,s]) => s.total >= 5 && s.withNext/s.total < 0.5)
+    .map(([name, s]) => `${name.split(' ')[0]} (${Math.round(s.withNext/s.total*100)}%)`);
+  if (lowNextVisit.length) signals.push({level:'yellow', text:`% следующей записи < 50%: ${lowNextVisit.join(', ')}`});
+
+  // Check weekly pulse
+  const roles = ['reception','head_kinez','head_stom','fin_director','chief_doctor'];
+  const dayOfWeek = new Date(pulseDate).getDay();
+  if (dayOfWeek === 5) { // Friday
+    const missing = roles.filter(r => !pulseReports[r]);
+    if (missing.length > 0) signals.push({level:'red', text:`Пятница: пульс не пришёл от ${missing.length} сотрудников`});
+  }
+
+  signalEl.innerHTML = signals.length ? `
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🚨 Сигналы тревоги</div>
+    ${signals.map(s => `<div style="background:${s.level==='red'?'rgba(240,92,92,0.1)':'rgba(245,166,35,0.1)'};border:1px solid ${s.level==='red'?'rgba(240,92,92,0.4)':'rgba(245,166,35,0.4)'};border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px;color:${s.level==='red'?'var(--danger)':'var(--warn)'}">${s.level==='red'?'🔴':'🟡'} ${s.text}</div>`).join('')}
+  ` : `<div style="background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:13px;color:var(--success)">🟢 Все показатели в норме</div>`;
+
+  // Next visit % table
+  const empRows = Object.entries(empStats)
+    .filter(([,s]) => s.total >= 3)
+    .sort((a,b) => (b[1].withNext/b[1].total) - (a[1].withNext/a[1].total))
+    .map(([name, s]) => {
+      const pct = Math.round(s.withNext/s.total*100);
+      const color = pct >= 60 ? 'var(--success)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 12px;font-size:13px">${esc(name)}</td>
+        <td style="padding:8px 12px;text-align:right;font-size:12px;color:var(--text2)">${s.total}</td>
+        <td style="padding:8px 12px;text-align:right">
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+            <div style="background:var(--surface2);border-radius:4px;height:6px;width:60px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:${color}">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+  nextEl.innerHTML = empRows ? `
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📅 % записи на следующий визит (за загруженный период)</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase">Врач</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase">Визитов</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;color:var(--muted);text-transform:uppercase">Следующий визит</th>
+        </tr></thead>
+        <tbody>${empRows}</tbody>
+      </table>
+    </div>` : '';
+}
+
+const PULSE_ROLES = [
+  {
+    key: 'reception', label: '🖥️ Ресепшен', freq: 'ежедневно',
+    fields: [
+      {key:'author', label:'Ваше имя', type:'text', placeholder:'Имя администратора'},
+      {key:'no_show', label:'No-show за день', type:'number', placeholder:'0'},
+      {key:'incidents', label:'Инциденты / жалобы', type:'bool'},
+      {key:'incidents_note', label:'Комментарий (если есть)', type:'text', placeholder:'Описание инцидента...'},
+    ]
+  },
+  {
+    key: 'head_kinez', label: '🦴 Рук. кинезиологии', freq: 'по пятницам',
+    fields: [
+      {key:'author', label:'Ваше имя', type:'text', placeholder:''},
+      {key:'good', label:'Что шло хорошо', type:'text', placeholder:''},
+      {key:'concern', label:'Что беспокоит', type:'text', placeholder:''},
+      {key:'complaints', label:'Жалобы пациентов', type:'bool'},
+      {key:'referrals', label:'Перенаправлений → стоматология', type:'number', placeholder:'0'},
+      {key:'need_help', label:'Нужна помощь директора', type:'bool'},
+    ]
+  },
+  {
+    key: 'head_stom', label: '🦷 Рук. стоматологии', freq: 'по пятницам',
+    fields: [
+      {key:'author', label:'Ваше имя', type:'text', placeholder:''},
+      {key:'good', label:'Что шло хорошо', type:'text', placeholder:''},
+      {key:'concern', label:'Что беспокоит', type:'text', placeholder:''},
+      {key:'complaints', label:'Жалобы пациентов', type:'bool'},
+      {key:'referrals', label:'Перенаправлений → кинезиология', type:'number', placeholder:'0'},
+      {key:'need_help', label:'Нужна помощь директора', type:'bool'},
+    ]
+  },
+  {
+    key: 'fin_director', label: '💰 Финансовый директор', freq: 'по пятницам',
+    fields: [
+      {key:'author', label:'Ваше имя', type:'text', placeholder:''},
+      {key:'revenue_kinez_pct', label:'Кинезиология % плана', type:'number', placeholder:'%'},
+      {key:'revenue_stom_pct', label:'Стоматология % плана', type:'number', placeholder:'%'},
+      {key:'deviations', label:'Отклонения от бюджета', type:'bool'},
+      {key:'deviations_note', label:'Описание отклонений', type:'text', placeholder:''},
+    ]
+  },
+  {
+    key: 'chief_doctor', label: '👨‍⚕️ Главный врач', freq: 'по пятницам',
+    fields: [
+      {key:'author', label:'Ваше имя', type:'text', placeholder:''},
+      {key:'med_complaints', label:'Жалобы с мед. составляющей', type:'bool'},
+      {key:'protocol_violations', label:'Нарушения протоколов', type:'bool'},
+      {key:'need_help', label:'Требует участия директора', type:'bool'},
+      {key:'notes', label:'Комментарий', type:'text', placeholder:''},
+    ]
+  },
+];
+
+function renderPulseManual() {
+  const el = document.getElementById('pulse-manual');
+  el.innerHTML = PULSE_ROLES.map(role => {
+    const saved = pulseReports[role.key]?.data || {};
+    const filled = Object.keys(saved).length > 0;
+    const updatedAt = pulseReports[role.key]?.updated_at;
+    const timeStr = updatedAt ? new Date(updatedAt).toLocaleTimeString('ru', {hour:'2-digit',minute:'2-digit'}) : null;
+
+    return `<div style="background:var(--surface);border:1px solid ${filled?'rgba(52,199,123,0.4)':'var(--border)'};border-radius:12px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:14px;font-weight:700">${role.label}</div>
+          <div style="font-size:11px;color:var(--muted)">${role.freq}</div>
+        </div>
+        ${filled ? `<span style="font-size:11px;color:var(--success)">✓ ${timeStr||'заполнено'}</span>` : '<span style="font-size:11px;color:var(--warn)">не заполнено</span>'}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="pf-${role.key}">
+        ${role.fields.map(f => {
+          const val = saved[f.key];
+          if (f.type === 'bool') return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="pf-${role.key}-${f.key}" ${val?'checked':''} style="accent-color:var(--accent);width:16px;height:16px"> ${f.label}
+          </label>`;
+          if (f.type === 'number') return `<div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">${f.label}</label>
+            <input type="number" id="pf-${role.key}-${f.key}" value="${val||''}" placeholder="${f.placeholder}" min="0"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+          </div>`;
+          return `<div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">${f.label}</label>
+            <input type="text" id="pf-${role.key}-${f.key}" value="${esc(val||'')}" placeholder="${f.placeholder}"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Onest',sans-serif;font-size:13px;box-sizing:border-box">
+          </div>`;
+        }).join('')}
+      </div>
+      <button onclick="savePulseReport('${role.key}')" style="width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:7px;padding:8px;color:#fff;font-family:'Onest',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Сохранить</button>
+    </div>`;
+  }).join('');
+}
+
+async function savePulseReport(roleKey) {
+  const role = PULSE_ROLES.find(r => r.key === roleKey);
+  if (!role) return;
+  const data = {};
+  role.fields.forEach(f => {
+    const el = document.getElementById(`pf-${roleKey}-${f.key}`);
+    if (!el) return;
+    if (f.type === 'bool') data[f.key] = el.checked;
+    else if (f.type === 'number') data[f.key] = parseInt(el.value)||0;
+    else data[f.key] = el.value.trim();
+  });
+
+  const existing = pulseReports[roleKey];
+  try {
+    if (existing?.id) {
+      await fetch(`${SB_URL}/rest/v1/pulse_reports?id=eq.${existing.id}`, {
+        method: 'PATCH',
+        headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify({data, updated_at: new Date().toISOString()})
+      });
+      pulseReports[roleKey] = {...existing, data, updated_at: new Date().toISOString()};
+    } else {
+      const res = await sbInsert('pulse_reports', {
+        report_date: pulseDate,
+        role: roleKey,
+        author: data.author || null,
+        data,
+      });
+      if (res?.[0]) pulseReports[roleKey] = res[0];
+    }
+    renderPulseAuto();
+    renderPulseManual();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+// ── TASKS ──
+let tasksData = [];
+let taskFilter = 'all';
+let editingTaskId = null;
+
+const TASK_PRIORITY = {
+  urgent: {label:'🔴 Срочный', color:'var(--danger)'},
+  normal: {label:'🟡 Средний', color:'var(--warn)'},
+  low:    {label:'🟢 Низкий',  color:'var(--success)'}
+};
+const TASK_STATUS = {
+  open:        {label:'🔵 Открыта',  color:'var(--accent)'},
+  in_progress: {label:'🟡 В работе', color:'var(--warn)'},
+  done:        {label:'✅ Закрыта',  color:'var(--success)'}
+};
+
+async function loadTasks() {
+  try {
+    const data = await sbGet('tasks', 'select=*&order=created_at.desc');
+    tasksData = data;
+    renderTasks();
+    populateTaskAssignees();
+  } catch(e) { console.log('Tasks error:', e.message); }
+}
+
+function populateTaskAssignees() { /* hardcoded in HTML */ }
+
+function setTaskFilter(status) {
+  taskFilter = status;
+  document.querySelectorAll('[id^="tf-"]').forEach(b => { if(b.tagName==='BUTTON') b.classList.remove('active'); });
+  document.getElementById('tf-'+status)?.classList.add('active');
+  renderTasks();
+}
+
+function renderTasks() {
+  const body = document.getElementById('tasks-body');
+  const statsEl = document.getElementById('tasks-stats');
+  if (!body) return;
+
+  const assigneeF = document.getElementById('tf-assignee')?.value || '';
+  const priorityF = document.getElementById('tf-priority')?.value || '';
+
+  // Stats
+  const counts = {open:0, in_progress:0, done:0};
+  tasksData.forEach(t => counts[t.status] = (counts[t.status]||0)+1);
+  const overdue = tasksData.filter(t => t.due_date && t.status !== 'done' && t.due_date < fmt(new Date())).length;
+
+  statsEl.innerHTML = [
+    ['Всего', tasksData.length, 'var(--text)'],
+    ['Открытые', counts.open||0, 'var(--accent)'],
+    ['В работе', counts.in_progress||0, 'var(--warn)'],
+    ['Закрытые', counts.done||0, 'var(--success)'],
+    ['Просрочены', overdue, overdue>0?'var(--danger)':'var(--muted)'],
+  ].map(([l,v,c]) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;flex:1;min-width:80px">
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${l}</div>
+    <div style="font-size:18px;font-weight:700;color:${c};font-family:'JetBrains Mono',monospace">${v}</div>
+  </div>`).join('');
+
+  // Filter
+  let filtered = taskFilter === 'all' ? tasksData : tasksData.filter(t => t.status === taskFilter);
+  if (assigneeF) filtered = filtered.filter(t => (t.assignee||'').includes(assigneeF));
+  if (priorityF) filtered = filtered.filter(t => t.priority === priorityF);
+
+  // Sort: urgent first, then by due_date
+  const PO = {urgent:0, normal:1, low:2};
+  filtered = [...filtered].sort((a,b) => {
+    if (a.status==='done' && b.status!=='done') return 1;
+    if (a.status!=='done' && b.status==='done') return -1;
+    const pa = PO[a.priority||'normal']??1, pb = PO[b.priority||'normal']??1;
+    if (pa!==pb) return pa-pb;
+    return (a.due_date||'9999').localeCompare(b.due_date||'9999');
+  });
+
+  if (!filtered.length) { body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Нет задач</div>'; return; }
+
+  const today = fmt(new Date());
+  // Kanban columns
+  const columns = [
+    {key:'open',        label:'🔵 Открытые',  color:'var(--accent)'},
+    {key:'in_progress', label:'🟡 В работе',   color:'var(--warn)'},
+    {key:'done',        label:'✅ Закрытые',   color:'var(--success)'},
+  ];
+
+  const taskCard = t => {
+    const pr = TASK_PRIORITY[t.priority||'normal'];
+    const due = t.due_date ? t.due_date.split('-').reverse().join('.') : null;
+    const isOverdue = t.due_date && t.status !== 'done' && t.due_date < today;
+    const assignees = t.assignee ? t.assignee.split(',').map(a=>a.trim()).filter(Boolean) : [];
+    return `<div onclick="openTaskModal('${t.id}')" draggable="true" ondragstart="taskDragStart(event,'${t.id}')"
+      style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${pr.color};border-radius:8px;padding:12px;cursor:pointer;margin-bottom:8px;user-select:none"
+      onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow=''">
+      <div style="font-size:13px;font-weight:600;line-height:1.3;margin-bottom:6px">${esc(t.title||'—')}</div>
+      ${t.description?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(t.description)}</div>`:''}
+      ${t.resolution?`<div style="font-size:10px;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);border-radius:4px;padding:4px 7px;color:var(--success);margin-bottom:6px">✓ ${esc(t.resolution)}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-top:4px">
+        <div style="display:flex;flex-wrap:wrap;gap:3px">${assignees.map(a=>`<span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">${esc(a)}</span>`).join('')}</div>
+        <div style="font-size:10px;color:${isOverdue?'var(--danger)':'var(--muted)'}">
+          ${isOverdue?'⚠️ ':''} ${due?'до '+due:''}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;min-height:400px">
+    ${columns.map(col => {
+      const colTasks = filtered.filter(t => t.status === col.key);
+      return `<div ondragover="event.preventDefault()" ondrop="taskDrop(event,'${col.key}')"
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:300px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:${col.color}">${col.label}</div>
+          <span style="font-size:11px;background:${col.color}18;color:${col.color};border-radius:12px;padding:1px 8px">${colTasks.length}</span>
+        </div>
+        ${colTasks.map(taskCard).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function openTaskModal(taskId) {
+  editingTaskId = taskId || null;
+  const t = taskId ? tasksData.find(x=>x.id===taskId) : null;
+  document.getElementById('task-modal-title').textContent = t ? 'Редактировать задачу' : 'Новая задача';
+  document.getElementById('tm-title').value = t?.title || '';
+  // Set assignee checkboxes
+  const assigneeVals = (t?.assignee || '').split(',').map(a=>a.trim()).filter(Boolean);
+  document.querySelectorAll('#tm-assignees input[type=checkbox]').forEach(cb => {
+    cb.checked = assigneeVals.includes(cb.value);
+  });
+  document.getElementById('tm-priority').value = t?.priority || 'normal';
+  document.getElementById('tm-created-date').value = t?.created_at ? t.created_at.slice(0,10) : fmt(new Date());
+  document.getElementById('tm-due').value = t?.due_date || '';
+  document.getElementById('tm-description').value = t?.description || '';
+  document.getElementById('tm-created-by').value = t?.created_by || localStorage.getItem('klientiks_note_author') || '';
+  document.getElementById('tm-resolution').value = t?.resolution || '';
+  document.getElementById('tm-resolution-block').style.display = t ? 'block' : 'none';
+  document.getElementById('tm-close-btn').style.display = t && t.status !== 'done' ? 'inline-block' : 'none';
+  document.getElementById('tm-error').style.display = 'none';
+  document.getElementById('task-modal').style.display = 'flex';
+}
+
+function closeTaskModal() {
+  document.getElementById('task-modal').style.display = 'none';
+}
+
+// Task drag-and-drop
+let dragTaskId = null;
+
+function taskDragStart(event, taskId) {
+  dragTaskId = taskId;
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+async function taskDrop(event, newStatus) {
+  event.preventDefault();
+  if (!dragTaskId) return;
+  const task = tasksData.find(t => t.id === dragTaskId);
+  if (!task || task.status === newStatus) return;
+  if (newStatus === 'done') {
+    // Open modal to enter resolution
+    openTaskModal(dragTaskId);
+    document.getElementById('tm-resolution-block').style.display = 'block';
+    document.getElementById('tm-close-btn').style.display = 'inline-block';
+    dragTaskId = null;
+    return;
+  }
+  try {
+    await fetch(`${SB_URL}/rest/v1/tasks?id=eq.${dragTaskId}`, {
+      method: 'PATCH',
+      headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({status: newStatus})
+    });
+    task.status = newStatus;
+    renderTasks();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+  dragTaskId = null;
+}
+
+async function saveTask() {
+  const title = document.getElementById('tm-title').value.trim();
+  const errEl = document.getElementById('tm-error');
+  if (!title) { errEl.textContent='Укажите название задачи'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('tm-save-btn');
+  btn.disabled=true; btn.textContent='Сохраняем...';
+  const author = document.getElementById('tm-created-by').value.trim();
+  if (author) localStorage.setItem('klientiks_note_author', author);
+  const payload = {
+    title,
+    assignee: [...document.querySelectorAll('#tm-assignees input[type=checkbox]:checked')].map(cb=>cb.value).join(', ') || null,
+    priority: document.getElementById('tm-priority').value,
+    due_date: document.getElementById('tm-due').value || null,
+    description: document.getElementById('tm-description').value.trim() || null,
+    created_by: author || null,
+    resolution: document.getElementById('tm-resolution').value.trim() || null,
+  };
+  try {
+    if (editingTaskId) {
+      await fetch(`${SB_URL}/rest/v1/tasks?id=eq.${editingTaskId}`, {
+        method:'PATCH',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+    } else {
+      payload.status = 'open';
+      payload.created_at = new Date().toISOString();
+      await sbInsert('tasks', payload);
+    }
+    closeTaskModal();
+    await loadTasks();
+  } catch(e) { errEl.textContent='Ошибка: '+e.message; errEl.style.display='block'; }
+  finally { btn.disabled=false; btn.textContent='Сохранить'; }
+}
+
+async function closeTask() {
+  const resolution = document.getElementById('tm-resolution').value.trim();
+  if (!resolution) {
+    document.getElementById('tm-resolution-block').style.display='block';
+    document.getElementById('tm-error').textContent='Укажите итог решения задачи';
+    document.getElementById('tm-error').style.display='block';
+    document.getElementById('tm-resolution').focus();
+    return;
+  }
+  const btn = document.getElementById('tm-close-btn');
+  btn.disabled=true; btn.textContent='Закрываем...';
+  try {
+    await fetch(`${SB_URL}/rest/v1/tasks?id=eq.${editingTaskId}`, {
+      method:'PATCH',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({status:'done', resolution, closed_at:new Date().toISOString()})
+    });
+    closeTaskModal();
+    await loadTasks();
+  } catch(e) { document.getElementById('tm-error').textContent='Ошибка: '+e.message; document.getElementById('tm-error').style.display='block'; }
+  finally { btn.disabled=false; btn.textContent='✅ Закрыть задачу'; }
+}
+
+// Realtime for tasks
+function initTasksRealtime() {
+  if (!supabaseClient) return;
+  supabaseClient.channel('tasks_changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'tasks'}, payload => {
+      if (payload.eventType==='DELETE') tasksData=tasksData.filter(t=>t.id!==payload.old.id);
+      else if (payload.eventType==='INSERT') tasksData.unshift(payload.new);
+      else { const i=tasksData.findIndex(t=>t.id===payload.new.id); if(i>=0) tasksData[i]=payload.new; else tasksData.unshift(payload.new); }
+      const activeTab = document.querySelector('.tab-btn.active')?.id?.replace('tab-','');
+      if (activeTab==='tasks') renderTasks();
+    }).subscribe();
+}
+
+// ── WAITLIST ──
+let wlData = [];
+let wlFilter = 'all';
+let wlEditId = null;
+
+const WL_STATUSES = [
+  {key:'waiting',   label:'⏳ Ожидает',    color:'var(--warn)'},
+  {key:'contacted', label:'📞 Связались',   color:'var(--accent)'},
+  {key:'booked',    label:'✅ Записан',     color:'var(--success)'},
+  {key:'cancelled', label:'❌ Отменил',     color:'var(--danger)'},
+];
+
+async function loadWaitlist() {
+  try {
+    const data = await sbGet('waitlist', 'select=*&order=created_at.desc');
+    wlData = data;
+    renderWaitlist();
+    populateWlDoctors();
+  } catch(e) { console.log('Waitlist error:', e.message); }
+}
+
+function populateWlDoctors() {
+  const doctors = [...new Set(wlData.map(e => e.doctor_name).filter(Boolean))].sort();
+  const sel = document.getElementById('wlf-doctor');
+  const selForm = document.getElementById('wl-doctor-sel');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Все врачи</option>' +
+      doctors.map(d => `<option value="${esc(d)}" ${d===cur?'selected':''}>${esc(d)}</option>`).join('');
+  }
+  // Fill form doctor select from employeeMap
+  if (selForm) {
+    const empDoctors = EMP_GROUPS.flatMap(([,names]) => names);
+    selForm.innerHTML = '<option value="">Не выбран</option>' +
+      EMP_GROUPS.map(([group, names]) =>
+        `<optgroup label="${esc(group)}">${names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`
+      ).join('');
+  }
+}
+
+function setWlFilter(status) {
+  wlFilter = status;
+  document.querySelectorAll('[id^="wlf-"]').forEach(b => {
+    if (b.tagName === 'BUTTON') b.classList.remove('active');
+  });
+  document.getElementById('wlf-' + status)?.classList.add('active');
+  renderWaitlist();
+}
+
+function renderWaitlist() {
+  const body = document.getElementById('wl-body');
+  const statsEl = document.getElementById('wl-stats');
+  const doctorFilter = document.getElementById('wlf-doctor')?.value || '';
+
+  // Stats
+  const counts = {};
+  WL_STATUSES.forEach(s => counts[s.key] = wlData.filter(e => e.status === s.key).length);
+  const total = wlData.length;
+  statsEl.innerHTML = [
+    ['Всего', total, 'var(--text)'],
+    ['Ожидает', counts.waiting||0, 'var(--warn)'],
+    ['Связались', counts.contacted||0, 'var(--accent)'],
+    ['Записан', counts.booked||0, 'var(--success)'],
+    ['Отменил', counts.cancelled||0, 'var(--danger)'],
+  ].map(([l,v,c]) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;flex:1;min-width:80px">
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${l}</div>
+    <div style="font-size:18px;font-weight:700;color:${c};font-family:'JetBrains Mono',monospace">${v}</div>
+  </div>`).join('');
+
+  // Filter
+  let filtered = wlFilter === 'all' ? wlData : wlData.filter(e => e.status === wlFilter);
+  if (doctorFilter) filtered = filtered.filter(e => e.doctor_name === doctorFilter);
+  // Sort: urgent first, then normal, then low
+  const PRIORITY_ORDER = {urgent: 0, normal: 1, low: 2};
+  filtered = [...filtered].sort((a, b) => {
+    const pa = PRIORITY_ORDER[a.priority||'normal'] ?? 1;
+    const pb = PRIORITY_ORDER[b.priority||'normal'] ?? 1;
+    if (pa !== pb) return pa - pb;
+    return (b.created_at||'').localeCompare(a.created_at||'');
+  });
+
+  if (!filtered.length) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Нет записей</div>';
+    return;
+  }
+
+  const STATUS_MAP = Object.fromEntries(WL_STATUSES.map(s => [s.key, s]));
+
+  body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">
+    <thead><tr>
+      ${['','Пациент','Телефон','Врач','Желаемая дата','Статус','Комментарий','Кто добавил','Добавлен',''].map(h =>
+        `<th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">${h}</th>`
+      ).join('')}
+    </tr></thead>
+    <tbody>
+      ${filtered.map(e => {
+        const st = STATUS_MAP[e.status] || {label:e.status, color:'var(--muted)'};
+        const dt = e.created_at ? new Date(e.created_at).toLocaleDateString('ru',{day:'numeric',month:'short'}) : '—';
+        const PRIORITY_COLOR = {urgent:'var(--danger)',normal:'var(--warn)',low:'var(--success)'};
+        const PRIORITY_ICON = {urgent:'🔴',normal:'🟡',low:'🟢'};
+        const pColor = PRIORITY_COLOR[e.priority||'normal'];
+        const pIcon = PRIORITY_ICON[e.priority||'normal'];
+        const rowBorder = e.priority === 'urgent' ? 'border-left:3px solid var(--danger)' : '';
+        const desiredDt = e.desired_date ? e.desired_date.split('-').reverse().join('.') : '—';
+        return `<tr style="border-bottom:1px solid var(--border);${rowBorder}" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+          <td style="padding:10px 8px;text-align:center;font-size:14px">${pIcon}</td>
+          <td style="padding:10px 12px;font-weight:600">${esc(e.client_name||'—')}</td>
+          <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">${esc(e.client_phone||'—')}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${esc(e.doctor_name||'—')}</td>
+          <td style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${desiredDt}</td>
+          <td style="padding:10px 12px">
+            <select onchange="updateWlStatus('${e.id}',this.value)" style="background:${st.color}18;border:1px solid ${st.color}44;border-radius:6px;padding:3px 8px;color:${st.color};font-family:'Onest',sans-serif;font-size:11px;font-weight:600;cursor:pointer">
+              ${WL_STATUSES.map(s => `<option value="${s.key}" ${s.key===e.status?'selected':''}>${s.label}</option>`).join('')}
+            </select>
+          </td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--text2);max-width:160px">${esc(e.comment||'—')}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--text2)">${esc(e.admin_name||'—')}</td>
+          <td style="padding:10px 12px;font-size:11px;color:var(--muted)">${dt}</td>
+          <td style="padding:10px 12px;display:flex;gap:4px">
+            <button onclick="openEditWaitlist('${e.id}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text2);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">✏️</button>
+            <button onclick="deleteWlEntry('${e.id}')" style="background:rgba(240,92,92,0.1);border:1px solid rgba(240,92,92,0.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-family:'Onest',sans-serif;font-size:11px;cursor:pointer">🗑</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function updateWlStatus(id, status) {
+  try {
+    await fetch(`${SB_URL}/rest/v1/waitlist?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({ status, updated_at: new Date().toISOString() })
+    });
+    const entry = wlData.find(e => e.id === id);
+    if (entry) entry.status = status;
+    renderWaitlist();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+function openAddWaitlist() {
+  wlEditId = null;
+  document.getElementById('wl-modal-title').textContent = 'Добавить в очередь';
+  document.getElementById('wl-name').value = '';
+  document.getElementById('wl-phone').value = '';
+  document.getElementById('wl-search').value = '';
+  document.getElementById('wl-search-results').innerHTML = '';
+  document.getElementById('wl-selected-client').style.display = 'none';
+  document.getElementById('wl-comment').value = '';
+  document.getElementById('wl-desired-date').value = '';
+  document.getElementById('wl-priority').value = 'normal';
+  document.getElementById('wl-admin').value = localStorage.getItem('klientiks_note_author') || '';
+  document.getElementById('wl-error').style.display = 'none';
+  populateWlDoctors();
+  document.getElementById('wl-modal').style.display = 'flex';
+}
+
+function openEditWaitlist(id) {
+  const e = wlData.find(x => x.id === id);
+  if (!e) return;
+  wlEditId = id;
+  document.getElementById('wl-modal-title').textContent = 'Редактировать';
+  document.getElementById('wl-name').value = e.client_name || '';
+  document.getElementById('wl-phone').value = e.client_phone || '';
+  document.getElementById('wl-comment').value = e.comment || '';
+  document.getElementById('wl-admin').value = e.admin_name || '';
+  document.getElementById('wl-error').style.display = 'none';
+  populateWlDoctors();
+  setTimeout(() => {
+    document.getElementById('wl-doctor-sel').value = e.doctor_name || '';
+    document.getElementById('wl-desired-date').value = e.desired_date || '';
+    document.getElementById('wl-priority').value = e.priority || 'normal';
+  }, 50);
+  document.getElementById('wl-modal').style.display = 'flex';
+}
+
+function closeWlModal() {
+  document.getElementById('wl-modal').style.display = 'none';
+}
+
+let wlSearchTimer = null;
+
+function searchWlClient() {
+  clearTimeout(wlSearchTimer);
+  const q = document.getElementById('wl-search').value.trim();
+  const res = document.getElementById('wl-search-results');
+  if (q.length < 2) { res.innerHTML = ''; return; }
+  res.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px">Поиск...</div>';
+  wlSearchTimer = setTimeout(async () => {
+    try {
+      const isPhone = /^[0-9+]{5,}$/.test(q.replace(/\s/g,''));
+      let clients = [];
+      if (isPhone) {
+        const phone = q.replace(/\D/g,'');
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/getClientByPhone/phone/${phone}`);
+        const item = data.items || data;
+        clients = item.id ? [item] : [];
+      } else {
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/Clients/s/searchAPI/name/${encodeURIComponent(q)}`);
+        clients = Array.isArray(data) ? data : (data.items || []);
+      }
+      res.innerHTML = clients.length
+        ? clients.slice(0,5).map(c =>
+          `<div onclick="selectWlClient('${esc(c.name||'')}','${esc(c.phone||'')}')"
+            style="padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;background:var(--surface2);margin-bottom:3px;border:1px solid var(--border)"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-weight:600">${esc(c.name||'—')}</div>
+            ${c.phone?`<div style="font-size:11px;color:var(--text2)">${esc(c.phone)}</div>`:''}
+          </div>`).join('')
+        : '<div style="font-size:12px;color:var(--muted);padding:4px">Не найдено — введите вручную</div>';
+    } catch(e) { res.innerHTML = ''; }
+  }, 400);
+}
+
+function selectWlClient(name, phone) {
+  document.getElementById('wl-name').value = name;
+  document.getElementById('wl-phone').value = phone;
+  document.getElementById('wl-search').value = '';
+  document.getElementById('wl-search-results').innerHTML = '';
+  // Show selected
+  const sel = document.getElementById('wl-selected-client');
+  sel.style.display = 'block';
+  document.getElementById('wl-selected-name').textContent = name;
+  document.getElementById('wl-selected-phone').textContent = phone || 'Телефон не указан';
+}
+
+function clearWlClient() {
+  document.getElementById('wl-selected-client').style.display = 'none';
+  document.getElementById('wl-name').value = '';
+  document.getElementById('wl-phone').value = '';
+}
+
+async function saveWaitlistEntry() {
+  const name = document.getElementById('wl-name').value.trim();
+  const errEl = document.getElementById('wl-error');
+  if (!name) { errEl.textContent = 'Укажите имя пациента'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('wl-save-btn');
+  btn.disabled = true; btn.textContent = 'Сохраняем...';
+  const admin = document.getElementById('wl-admin').value.trim();
+  if (admin) localStorage.setItem('klientiks_note_author', admin);
+  const payload = {
+    client_name: name,
+    client_phone: document.getElementById('wl-phone').value.trim(),
+    doctor_name: document.getElementById('wl-doctor-sel').value || null,
+    comment: document.getElementById('wl-comment').value.trim(),
+    desired_date: document.getElementById('wl-desired-date').value || null,
+    priority: document.getElementById('wl-priority').value || 'normal',
+    admin_name: admin || null,
+    updated_at: new Date().toISOString()
+  };
+  try {
+    if (wlEditId) {
+      await fetch(`${SB_URL}/rest/v1/waitlist?id=eq.${wlEditId}`, {
+        method: 'PATCH',
+        headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      // Update local data directly
+      const idx = wlData.findIndex(e => e.id === wlEditId);
+      if (idx >= 0) wlData[idx] = { ...wlData[idx], ...payload };
+      closeWlModal();
+      renderWaitlist();
+    } else {
+      const result = await sbInsert('waitlist', { ...payload, status: 'waiting', created_at: new Date().toISOString() });
+      closeWlModal();
+      // Realtime will add it, but reload as fallback
+      setTimeout(() => loadWaitlist(), 500);
+    }
+  } catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
+}
+
+async function deleteWlEntry(id) {
+  if (!confirm('Удалить запись из очереди?')) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/waitlist?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    wlData = wlData.filter(e => e.id !== id);
+    renderWaitlist();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+// Realtime for waitlist
+function initWaitlistRealtime() {
+  if (!supabaseClient) return;
+  supabaseClient.channel('waitlist_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, payload => {
+      if (payload.eventType === 'DELETE') {
+        wlData = wlData.filter(e => e.id !== payload.old.id);
+      } else if (payload.eventType === 'INSERT') {
+        wlData.unshift(payload.new);
+      } else {
+        const idx = wlData.findIndex(e => e.id === payload.new.id);
+        if (idx >= 0) wlData[idx] = payload.new;
+        else wlData.unshift(payload.new);
+      }
+      const activeTab = document.querySelector('.tab-btn.active')?.id?.replace('tab-','');
+      if (activeTab === 'waitlist') renderWaitlist();
+    })
+    .subscribe();
+}
+
 // ── CALLS TAB ──
 let callsFilter = '';
 let allCallEntries = [];
+let currentCallVisitId = null;
+let currentCallEntry = null;
+
+let futureClientIds = new Set(); // clients with future scheduled visits
+
+async function loadFutureVisits() {
+  // Load all future scheduled visits to know who is already booked
+  try {
+    const nowTs = Math.floor(Date.now()/1000);
+    const futureTs = nowTs + 90*86400; // 90 days ahead
+    let items = [], offset = 0;
+    while(true) {
+      const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${nowTs}&date_till=${futureTs}&filter=start_datetime&limit=100&status=scheduled&offset=${offset}`);
+      const batch = Array.isArray(data) ? data : (data.orders || data.items || []);
+      if (!batch.length) break;
+      batch.forEach(a => futureClientIds.add(a.client_id));
+      offset += batch.length;
+      if (batch.length < 100) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    // Also confirmed and sms_confirmation_sent
+    for (const st of ['confirmed', 'sms_confirmation_sent']) {
+      offset = 0;
+      while(true) {
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${nowTs}&date_till=${futureTs}&filter=start_datetime&limit=100&status=${st}&offset=${offset}`);
+        const batch = Array.isArray(data) ? data : (data.orders || data.items || []);
+        if (!batch.length) break;
+        batch.forEach(a => futureClientIds.add(a.client_id));
+        offset += batch.length;
+        if (batch.length < 100) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+    console.log('Future client ids loaded:', futureClientIds.size);
+  } catch(e) { console.log('Future visits error:', e.message); }
+}
 
 async function loadCallsTab() {
   const body = document.getElementById('calls-body');
@@ -2030,6 +3879,9 @@ async function loadCallsTab() {
   body.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
 
   try {
+    // Load future visits if not already loaded
+    if (futureClientIds.size === 0) await loadFutureVisits();
+
     // Load all call_log entries
     const logs = await sbGet('call_log', 'select=*&order=updated_at.desc');
 
@@ -2039,16 +3891,16 @@ async function loadCallsTab() {
       return { ...log, _visit: visit };
     });
 
-    // Also add cancelled-not-rescheduled from journal that have no log entry yet
+    // Add from journal: cancelled + finished without future visit
     const loggedIds = new Set(logs.map(l => l.visit_id));
     const unlogged = all.filter(a => {
-      if (a.status !== 'cancelled' && a.status !== 'cancelled_by_sms') return false;
       if (loggedIds.has(a.id)) return false;
-      return !all.some(x =>
-        x.client_id === a.client_id && x.id !== a.id &&
-        (x.status === 'scheduled' || x.status === 'confirmed') &&
-        (x.start_datetime||'') > (a.start_datetime||'')
-      );
+      const isCancelled = a.status === 'cancelled' || a.status === 'cancelled_by_sms';
+      const isFinished = a.status === 'finished';
+      if (!isCancelled && !isFinished) return false;
+      // For finished: only include if no future visit
+      if (isFinished && futureClientIds.has(a.client_id)) return false;
+      return true;
     });
 
     const pendingEntries = unlogged.map(a => ({
@@ -2064,13 +3916,38 @@ async function loadCallsTab() {
       _visit: a
     }));
 
-    allCallEntries = [...allCallEntries, ...pendingEntries]
+    let merged = [...allCallEntries, ...pendingEntries]
+      .sort((a,b) => (b.visit_date||'').localeCompare(a.visit_date||''));
+
+    // Deduplicate by client_id — keep most recent visit, prefer entries with log
+    const clientMap = {};
+    merged.forEach(e => {
+      const cid = e.client_id;
+      if (!cid) return;
+      const existing = clientMap[cid];
+      if (!existing) { clientMap[cid] = e; return; }
+      // Prefer entry with actual log (status != pending)
+      if (existing.status === 'pending' && e.status !== 'pending') { clientMap[cid] = e; return; }
+      if (existing.status !== 'pending' && e.status === 'pending') return;
+      // Both same type — keep more recent visit
+      if ((e.visit_date||'') > (existing.visit_date||'')) clientMap[cid] = e;
+    });
+
+    allCallEntries = Object.values(clientMap)
       .sort((a,b) => {
-        // Sort: pending first, then by visit date desc
         if (a.status === 'pending' && b.status !== 'pending') return -1;
         if (a.status !== 'pending' && b.status === 'pending') return 1;
         return (b.visit_date||'').localeCompare(a.visit_date||'');
       });
+
+    // Populate doctor filter
+    const doctors = [...new Set(allCallEntries.map(e => e.doctor_name).filter(Boolean).filter(d => d !== '—'))].sort();
+    const docSel = document.getElementById('cf-doctor');
+    if (docSel) {
+      const cur = docSel.value;
+      docSel.innerHTML = '<option value="">Все врачи</option>' +
+        doctors.map(d => `<option value="${esc(d)}" ${d===cur?'selected':''}>${esc(d)}</option>`).join('');
+    }
 
     // Stats
     const counts = {};
@@ -2120,12 +3997,28 @@ function setCallFilter(status) {
   renderCallsTable();
 }
 
-function renderCallsTable() {
-  const body = document.getElementById('calls-body');
-  const CALL_COLORS = {pending:'var(--warn)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)'};
-  const CALL_LABELS = {pending:'Не звонили',no_answer:'Не дозвонились',callback:'Перезвонит',booked:'Записан',refused:'Отказался'};
+let callsView = 'table';
 
-  const filtered = callsFilter ? allCallEntries.filter(e => e.status === callsFilter) : allCallEntries;
+function setCallsView(view) {
+  callsView = view;
+  document.getElementById('cv-table').style.background = view==='table'?'var(--accent)':'var(--surface2)';
+  document.getElementById('cv-table').style.color = view==='table'?'#fff':'var(--text2)';
+  document.getElementById('cv-table').style.border = view==='table'?'none':'1px solid var(--border)';
+  document.getElementById('cv-kanban').style.background = view==='kanban'?'var(--accent)':'var(--surface2)';
+  document.getElementById('cv-kanban').style.color = view==='kanban'?'#fff':'var(--text2)';
+  document.getElementById('cv-kanban').style.border = view==='kanban'?'none':'1px solid var(--border)';
+  renderCallsTable();
+}
+
+function renderCallsTable() {
+  renderCallsKanban(); return;
+  const body = document.getElementById('calls-body');
+  const CALL_COLORS = {pending:'var(--warn)',no_answer:'var(--warn)',callback:'var(--accent)',booked:'var(--success)',refused:'var(--danger)',dentistry:'#a78bfa'};
+  const CALL_LABELS = {pending:'Не звонили',no_answer:'Не дозвонились',callback:'Перезвонит',booked:'Записан',refused:'Отказался',dentistry:'Стоматология'};
+
+  const doctorFilter = document.getElementById('cf-doctor')?.value || '';
+  let filtered = callsFilter ? allCallEntries.filter(e => e.status === callsFilter) : allCallEntries;
+  if (doctorFilter) filtered = filtered.filter(e => e.doctor_name === doctorFilter);
 
   if (!filtered.length) {
     body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Нет записей</div>';
@@ -2175,9 +4068,174 @@ function renderCallsTable() {
   `;
 }
 
+// Store entries by index for quick lookup
+let _kanbanEntryMap = {};
+
+function renderCallsKanban() {
+  const body = document.getElementById('calls-body');
+
+  // Auto-mark as booked
+  allCallEntries.forEach(e => {
+    if (futureClientIds.has(e.client_id)) {
+      e.status = 'booked';
+      e._autoBooked = true;
+    }
+  });
+
+  // Build index map for click handlers
+  _kanbanEntryMap = {};
+  allCallEntries.forEach((e, i) => { _kanbanEntryMap[i] = e; });
+
+  const COLUMNS = [
+    {key:'pending',    label:'📞 Не звонили',    color:'var(--muted)'},
+    {key:'no_answer',  label:'📵 Не дозвонились', color:'var(--warn)'},
+    {key:'callback',   label:'🔁 Перезвонит',    color:'var(--accent)'},
+    {key:'booked',     label:'✅ Записан',        color:'var(--success)'},
+    {key:'refused',    label:'❌ Отказался',      color:'var(--danger)'},
+    {key:'dentistry',  label:'🦷 Стоматология',   color:'#a78bfa'},
+  ];
+
+  const doctorFilter = document.getElementById('cf-doctor')?.value || '';
+  let filtered = callsFilter ? allCallEntries.filter(e => e.status === callsFilter) : allCallEntries;
+  if (doctorFilter) filtered = filtered.filter(e => e.doctor_name === doctorFilter);
+
+  // Build filtered index map
+  const filteredMap = {};
+  filtered.forEach((e, i) => { filteredMap[i] = e; });
+
+  const cardHtml = (e, idx) => {
+    const phone = e._visit?.client_phone || e.client_phone || '';
+    const dt = e.visit_date ? e.visit_date.split('-').reverse().join('.') : '';
+    return `<div data-idx="${idx}" class="kanban-card"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;user-select:none">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(e.client_name||'—')}</div>
+      ${phone ? `<div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${esc(phone)}</div>` : ''}
+      ${dt ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">визит: ${dt}</div>` : ''}
+      ${e.comment ? `<div style="font-size:11px;color:var(--text2);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(e.comment)}</div>` : ''}
+      ${e._autoBooked ? `<div style="font-size:10px;color:var(--success);margin-bottom:6px">🔗 записан</div>` : ''}
+      <div style="display:flex;gap:5px;margin-top:4px">
+        <button class="kanban-info-btn" data-idx="${idx}" style="flex:1;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.3);border-radius:5px;padding:4px;color:var(--accent);font-family:'Onest',sans-serif;font-size:10px;cursor:pointer">👤 Клиент</button>
+        <button class="kanban-status-btn" data-idx="${idx}" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px;color:var(--text2);font-family:'Onest',sans-serif;font-size:10px;cursor:pointer">✏️ Статус</button>
+      </div>
+    </div>`;
+  };
+
+  body.innerHTML = `<div style="display:flex;gap:10px;overflow-x:auto;padding:12px 0;min-height:400px;align-items:flex-start">
+    ${COLUMNS.map(col => {
+      const colEntries = filtered.map((e,i) => ({e,i})).filter(({e}) => e.status === col.key);
+      return `<div style="flex:0 0 240px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:${col.color}">${col.label}</div>
+          <span style="font-size:11px;background:${col.color}18;color:${col.color};border-radius:10px;padding:1px 8px">${colEntries.length}</span>
+        </div>
+        ${col.key === 'booked' ? `<div style="font-size:10px;color:var(--muted);margin-bottom:8px;text-align:center">🔒 только автоматически</div>` : ''}
+        <div>${colEntries.map(({e,i}) => cardHtml(e,i)).join('')}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // Info button - show client visit popup
+  body.querySelectorAll('.kanban-info-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      const entry = filtered[idx];
+      if (!entry) return;
+      const aIdx = all.findIndex(a => a.id === entry.visit_id);
+      if (aIdx >= 0) {
+        showClientCard(aIdx);
+      } else {
+        const dt = (entry.visit_date||'').split('-').reverse().join('.');
+        alert(`Загрузите период ${dt.slice(3)} в Журнале чтобы открыть карточку`);
+      }
+    });
+  });
+
+  // Status button - open call log popup
+  body.querySelectorAll('.kanban-status-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      const entry = filtered[idx];
+      if (!entry) return;
+      const aIdx = all.findIndex(a => a.id === entry.visit_id);
+      if (aIdx >= 0) openCallLog(aIdx);
+      else openCallStatusPopup(entry);
+    });
+  });
+}
+
+function openCallStatusPopup(entry) {
+  const existing = entry._log || callLogMap[entry.visit_id] || null;
+  const dt = (entry.visit_date||'').split('-').reverse().join('.');
+  document.getElementById('cl-title').textContent = entry.client_name || '—';
+  document.getElementById('cl-subtitle').textContent = [dt, entry.doctor_name].filter(Boolean).join(' · ');
+  document.getElementById('cl-comment').value = existing?.comment || '';
+  document.getElementById('cl-admin').value = existing?.admin_name || localStorage.getItem('klientiks_note_author') || '';
+
+  const curStatus = existing?.status || entry.status || 'pending';
+  const isBooked = futureClientIds.has(entry.client_id);
+
+  document.getElementById('cl-status-btns').innerHTML =
+    CALL_STATUSES.filter(s => s.key !== 'booked').map(s =>
+      `<button onclick="selectCallStatus('${s.key}')" id="cls-${s.key}"
+        style="padding:6px 12px;border-radius:20px;border:1px solid ${s.color};
+        color:${curStatus===s.key?'#fff':s.color};
+        background:${curStatus===s.key?s.color:'transparent'};
+        font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">${s.label}</button>`
+    ).join('') +
+    (isBooked ? `<div style="padding:6px 14px;border-radius:20px;border:1px solid var(--success);color:var(--success);font-size:12px;font-weight:600;display:inline-block">✅ Записан (авто)</div>` : '');
+
+  const prev = document.getElementById('cl-prev');
+  if (prev) prev.style.display = 'none';
+
+  // Store for saving
+  callLogVisitIdx = all.findIndex(a => a.id === entry.visit_id);
+  _callEntryOverride = callLogVisitIdx === -1 ? entry : null;
+  document.getElementById('call-modal').style.display = 'flex';
+}
+
+function openCallFromEntry(entry) {
+  // Find in all[] by client visit
+  const aIdx = all.findIndex(a => a.id === entry.visit_id);
+  if (aIdx >= 0) { openCallLog(aIdx); return; }
+
+  // Not in journal — build popup manually
+  const existing = entry._log || (entry.status !== 'pending' && entry.id ? entry : null);
+  const dt = (entry.visit_date||'').split('-').reverse().join('.');
+  const phone = entry._visit?.client_phone || entry.client_phone || '';
+
+  document.getElementById('cl-title').textContent = entry.client_name || '—';
+  document.getElementById('cl-subtitle').textContent = [dt, entry.doctor_name].filter(Boolean).join(' · ');
+
+  const phoneEl = document.getElementById('cl-phone');
+  if (phoneEl) phoneEl.textContent = phone;
+
+  const curStatus = (existing?.status) || 'pending';
+  const isBooked = futureClientIds.has(entry.client_id);
+
+  document.getElementById('cl-status-btns').innerHTML =
+    CALL_STATUSES.filter(s => s.key !== 'booked').map(s =>
+      `<button onclick="selectCallStatus('${s.key}')" id="cls-${s.key}"
+        style="padding:6px 12px;border-radius:20px;border:1px solid ${s.color};
+        color:${curStatus===s.key?'#fff':s.color};
+        background:${curStatus===s.key?s.color:'transparent'};
+        font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">${s.label}</button>`
+    ).join('') +
+    (isBooked ? `<div style="padding:6px 14px;border-radius:20px;border:1px solid var(--success);color:var(--success);font-size:12px;font-weight:600;display:inline-block">✅ Записан (авто)</div>` : '');
+
+  // Store current visit for saveCallLog
+  window._currentCallEntryOverride = entry;
+  document.getElementById('cl-comment').value = existing?.comment || '';
+  document.getElementById('cl-admin').value = existing?.admin_name || localStorage.getItem('klientiks_note_author') || '';
+  const prevEl = document.getElementById('cl-prev');
+  if (prevEl) prevEl.style.display = 'none';
+  document.getElementById('call-modal').style.display = 'flex';
+}
+
 function openCallLogById(visitId) {
-  const aIdx = all.findIndex(a => a.id === visitId);
-  if (aIdx >= 0) openCallLog(aIdx);
+  const entry = allCallEntries.find(e => e.visit_id === visitId);
+  if (entry) openCallFromEntry(entry);
 }
 
 // Override saveCallLog to refresh calls tab if open
@@ -3221,9 +5279,7 @@ function renderToday() {
   const todayClientIds = new Set(todayAll.map(a => a.client_id).filter(Boolean));
   let primary = 0, secondary = 0;
   todayClientIds.forEach(cid => {
-    const allVisits = all.filter(a => a.client_id === cid);
-    const firstVisitDate = allVisits.map(a => (a.start_datetime||'').slice(0,10)).sort()[0];
-    if (firstVisitDate === todayStr) primary++;
+    if (isFirstVisit(cid, todayStr)) primary++;
     else secondary++;
   });
 
@@ -3359,14 +5415,146 @@ function renderToday() {
 }
 
 
+// ── FIRST VISITS (точный подсчёт первичных) ──
+async function loadFirstVisits() {
+  // Try localStorage cache first (valid 7 days)
+  try {
+    const cached = localStorage.getItem('kl_first_visits');
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < 7 * 24 * 3600 * 1000) {
+        Object.assign(firstVisitsMap, data);
+        console.log('First visits from cache:', Object.keys(firstVisitsMap).length);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Load from Supabase in small batches
+  let offset = 0;
+  let failCount = 0;
+  while(true) {
+    try {
+      const data = await sbGet('client_first_visits', `select=client_id,first_visit_date&limit=200&offset=${offset}`);
+      if (!data.length) break;
+      data.forEach(r => { firstVisitsMap[r.client_id] = r.first_visit_date; });
+      offset += data.length;
+      failCount = 0;
+      if (data.length < 200) break;
+      await new Promise(r => setTimeout(r, 100));
+    } catch(e) {
+      failCount++;
+      if (failCount > 5) { console.log('First visits: giving up at offset', offset); break; }
+      await new Promise(r => setTimeout(r, 2000 * failCount));
+    }
+  }
+
+  const count = Object.keys(firstVisitsMap).length;
+  console.log('First visits loaded:', count);
+
+  // Save to localStorage if we got a good amount
+  if (count > 100) {
+    try {
+      localStorage.setItem('kl_first_visits', JSON.stringify({ data: firstVisitsMap, ts: Date.now() }));
+    } catch(e) {}
+  }
+}
+
+async function syncFirstVisits() {
+  const btn = document.getElementById('sync-fv-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Синхронизация...'; }
+
+  try {
+    // Load ALL visits year by year from 2016
+    let visits = [], loaded = 0;
+    const currentYear = new Date().getFullYear();
+
+    for (let year = 2016; year <= currentYear; year++) {
+      const yearStart = Math.floor(new Date(`${year}-01-01`).getTime() / 1000);
+      const yearEnd = Math.floor(new Date(`${year}-12-31T23:59:59`).getTime() / 1000);
+      let offset = 0;
+
+      if (btn) btn.textContent = `Загрузка ${year} года...`;
+
+      while(true) {
+        const data = await apiGet(`/list/a/${ACC}/u/${USR}/m/AppointmentClientLinks/ik/orders?date=${yearStart}&date_till=${yearEnd}&filter=start_datetime&limit=100&status=finished&offset=${offset}`);
+        const items = Array.isArray(data) ? data : (data.orders || data.items || []);
+        if (!items.length) break;
+        visits.push(...items);
+        offset += 100;
+        loaded += items.length;
+        if (btn) btn.textContent = `${year}: загружено ${loaded.toLocaleString('ru')} визитов...`;
+        if (items.length < 100) break;
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+
+    // Build first visit map
+    const map = {};
+    visits.forEach(a => {
+      if (!a.client_id) return;
+      const dt = (a.start_datetime||'').slice(0,10);
+      if (!map[a.client_id] || dt < map[a.client_id]) map[a.client_id] = dt;
+    });
+
+    // Upsert to Supabase in batches of 500
+    const entries = Object.entries(map).map(([client_id, first_visit_date]) => ({
+      client_id: parseInt(client_id), first_visit_date
+    }));
+
+    if (btn) btn.textContent = `Сохранение ${entries.length.toLocaleString('ru')} записей...`;
+
+    for (let i = 0; i < entries.length; i += 500) {
+      const batch = entries.slice(i, i + 500);
+      await fetch(`${SB_URL}/rest/v1/client_first_visits`, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(batch)
+      });
+      if (btn) btn.textContent = `Сохранено: ${Math.min(i+500, entries.length).toLocaleString('ru')}/${entries.length.toLocaleString('ru')}...`;
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    // Save to Supabase and localStorage
+    firstVisitsMap = {};
+    Object.assign(firstVisitsMap, map);
+    try {
+      localStorage.setItem('kl_first_visits', JSON.stringify({ data: firstVisitsMap, ts: Date.now() }));
+    } catch(e) {}
+    if (btn) { btn.disabled = false; btn.textContent = `✓ Синхронизировано (${entries.length.toLocaleString('ru')})` ; }
+    alert(`Готово! Синхронизировано ${entries.length.toLocaleString('ru')} пациентов`);
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Синхронизировать историю'; }
+    alert('Ошибка: ' + e.message);
+  }
+}
+
+function isFirstVisit(clientId, dateStr) {
+  // Use Supabase data if available, otherwise fallback to loaded period
+  if (firstVisitsMap[clientId]) {
+    return firstVisitsMap[clientId] === dateStr;
+  }
+  // Fallback: check loaded data
+  const clientVisits = all.filter(a => a.client_id === clientId && a.status === 'finished');
+  if (!clientVisits.length) return false;
+  const firstDate = clientVisits.map(a => (a.start_datetime||'').slice(0,10)).sort()[0];
+  return firstDate === dateStr;
+}
+
 // ── CALL LOG ──
 let callLogVisitIdx = null;
+let _callEntryOverride = null; // for entries not in all[]
 const CALL_STATUSES = [
-  {key:'pending',    label:'📞 Не звонили',   color:'var(--muted)'},
-  {key:'no_answer',  label:'📵 Не дозвонились', color:'var(--warn)'},
-  {key:'callback',   label:'🔁 Перезвонит',   color:'var(--accent)'},
-  {key:'booked',     label:'✅ Записан',       color:'var(--success)'},
-  {key:'refused',    label:'❌ Отказался',     color:'var(--danger)'},
+  {key:'pending',      label:'📞 Не звонили',     color:'var(--muted)'},
+  {key:'no_answer',    label:'📵 Не дозвонились', color:'var(--warn)'},
+  {key:'callback',     label:'🔁 Перезвонит',     color:'var(--accent)'},
+  {key:'booked',       label:'✅ Записан',         color:'var(--success)'},
+  {key:'refused',      label:'❌ Отказался',       color:'var(--danger)'},
+  {key:'dentistry',  label:'🦷 Стоматология',  color:'#a78bfa'},
 ];
 
 async function loadCallLog() {
@@ -3391,9 +5579,12 @@ function openCallLog(aIdx) {
 
   // Status buttons
   const curStatus = existing?.status || 'pending';
-  document.getElementById('cl-status-btns').innerHTML = CALL_STATUSES.map(s =>
-    `<button onclick="selectCallStatus('${s.key}')" id="cls-${s.key}" style="padding:6px 12px;border-radius:20px;border:1px solid ${s.color};color:${curStatus===s.key?'#fff':s.color};background:${curStatus===s.key?s.color:'transparent'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">${s.label}</button>`
-  ).join('');
+  const isBooked = futureClientIds.has(a.client_id);
+  document.getElementById('cl-status-btns').innerHTML =
+    CALL_STATUSES.filter(s => s.key !== 'booked').map(s =>
+      `<button onclick="selectCallStatus('${s.key}')" id="cls-${s.key}" style="padding:6px 12px;border-radius:20px;border:1px solid ${s.color};color:${curStatus===s.key?'#fff':s.color};background:${curStatus===s.key?s.color:'transparent'};font-family:'Onest',sans-serif;font-size:12px;cursor:pointer">${s.label}</button>`
+    ).join('') +
+    (isBooked ? `<div style="padding:6px 14px;border-radius:20px;border:1px solid var(--success);color:var(--success);font-size:12px;font-weight:600;display:inline-block">✅ Записан (авто)</div>` : '');
 
   // Previous entry info
   const prev = document.getElementById('cl-prev');
@@ -3420,28 +5611,34 @@ function selectCallStatus(key) {
 }
 
 async function saveCallLog() {
-  const a = all[callLogVisitIdx];
-  if (!a) return;
+  const a = all[callLogVisitIdx] || null;
+  const entry = _callEntryOverride;
+  if (!a && !entry) return;
   const btn = document.getElementById('cl-save-btn');
   btn.disabled = true; btn.textContent = 'Сохраняем...';
 
   const admin = document.getElementById('cl-admin').value.trim();
   if (admin) localStorage.setItem('klientiks_note_author', admin);
 
+  const src = a || entry;
   try {
     const payload = {
-      visit_id: a.id,
-      client_id: a.client_id,
-      client_name: a.client_name || '',
-      client_phone: a.client_phone || '',
-      visit_date: (a.start_datetime||'').slice(0,10),
-      doctor_name: a._empName || '',
+      visit_id: a ? a.id : (entry.visit_id || entry.id),
+      client_id: src.client_id,
+      client_name: src.client_name || '',
+      client_phone: src.client_phone || (src._visit?.client_phone) || '',
+      visit_date: (src.start_datetime||src.visit_date||'').slice(0,10),
+      doctor_name: src._empName || src.doctor_name || '',
       status: _callStatus,
       comment: document.getElementById('cl-comment').value.trim(),
       admin_name: admin || null,
       updated_at: new Date().toISOString()
     };
-    const existing = callLogMap[a.id];
+    const visitId = typeof payload.visit_id === 'string' && payload.visit_id.includes('-')
+      ? (entry?.visit_id || null)  // was UUID, use entry's visit_id
+      : payload.visit_id;
+    payload.visit_id = visitId;
+    const existing = callLogMap[visitId] || (entry?._log?.id ? entry._log : null) || null;
     if (existing?.id) {
       await fetch(`${SB_URL}/rest/v1/call_log?id=eq.${existing.id}`, {
         method: 'PATCH',
@@ -3451,9 +5648,13 @@ async function saveCallLog() {
     } else {
       await sbInsert('call_log', payload);
     }
-    callLogMap[a.id] = {...(callLogMap[a.id]||{}), ...payload};
+    callLogMap[visitId] = {...(callLogMap[visitId]||{}), ...payload};
+    // Update allCallEntries status
+    const ce = allCallEntries.find(e => (e.visit_id||e.id) === visitId);
+    if (ce) { ce.status = _callStatus; ce.comment = payload.comment; }
+    _callEntryOverride = null;
     closeCallLog();
-    renderTable(); // refresh badges
+    renderCallsKanban(); // refresh kanban
   } catch(e) {
     alert('Ошибка сохранения: ' + e.message);
   } finally {
